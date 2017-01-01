@@ -1,3 +1,6 @@
+// note: to use serial in to change pid constants mid-test,
+	// format to enter the values in: (kP,kI,kD)
+
 // TODO: replace DUALVNH5019 lib
 // TODO: seperate constants for each motor
 // TODO: wire connection guide somewhere?
@@ -38,6 +41,9 @@ DualVNH5019MotorShield md;
 double output, input, setPoint;
 
 PID pid(&input, &output, &setPoint, 5.3, 0, 0.18, AUTOMATIC);
+
+// string versions of pid consts used with serial input to modify constants
+String kP, kI, kD;
 
 // was 65/60
 float MOTORSLACK_1 = 65;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
@@ -87,7 +93,7 @@ void loop()
 
 	// make sure we only compute pid and set motors at correct interval (our cycle is 10 ms)
 	// see: https://learn.adafruit.com/multi-tasking-the-arduino-part-1/using-millis-for-timing
-	
+
 	if (currentMillis - previousMillis >= interval)
 	{
 		previousMillis = currentMillis;
@@ -98,7 +104,7 @@ void loop()
 
 		// get the z orientation
 		input = event.orientation.z;
-		
+
 		// if we're out of control stop motors.
 		if (abs(input) > 45)
 		{
@@ -132,6 +138,25 @@ void loop()
 			md.setM1Speed(-output1);
 			md.setM2Speed(output2);
 		}
+	}
+	// if serial data input is avaiable (modify pid constants)
+	if (Serial.available() > 0)
+	{
+		// get incoming serial data (until newline)
+		String inSerialData = Serial.readStringUntil('\n');
+
+		// get first comma position
+		int delimIndx = inSerialData.indexOf(",");
+
+		// get 2nd comma position
+		int delimIndx2 = inSerialData.indexOf(",", delimIndx+1);
+
+		// use substrings to get our constants
+		kP = inSerialData.substring(0, delimIndx);
+		kI = inSerialData.substring(delimIndx+1, delimIndx2);
+		kD = inSerialData.substring(delimIndx2);
+		// set our new PID constantss
+		pid.SetTunings(kP.toFloat(), kI.toFloat(), kD.toFloat());
 	}
 
 	// testing + debugging data
