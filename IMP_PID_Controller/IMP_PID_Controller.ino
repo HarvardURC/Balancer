@@ -1,11 +1,5 @@
-// TODO: check our whole reversal isn't messing with the pid
-	// (see note in code where we declare enc_direction)
-	// we could just leave it up to the pid to set + / -, which seems like
-	// a better idea. Won't change this until back and able to test
-	// (so we don't push defective code)
 // TODO: replace DUALVNH5019 lib
 // TODO: seperate constants for each motor
-// TODO: quaternions instead of euler vectors?
 // TODO: wire connection guide somewhere?
 // TODO: Gyro Offsets
 
@@ -104,38 +98,22 @@ void loop()
 
 		// get the z orientation
 		input = event.orientation.z;
-
-		/* SEE TODO- might just get rid of this and let pid calculate +/- */
-		// if z has changed update pos. and find which direction we rotated
-		int enc_direction;
-		if (input < 0)
-		{
-			enc_direction = 1;
-		}
-		if (input > 0)
-		{
-			enc_direction = -1;
-		}
-		input = abs(input);
-
+		
 		// if we're out of control stop motors.
-		if (input > 45)
+		if (abs(input) > 45)
 		{
 			md.setM1Speed(0);
 			md.setM2Speed(0);
 		}
 		else
 		{
-			// commented out option to create a deadzone when robot within 1.5 deg of ctr
+			// commented out option to create a deadzone when robot within 1 deg of ctr
 			/*
-			if (input < 1.5)
+			if (input < 1)
 			{
 				md.setM1Speed(0);
 				md.setM2Speed(0);
-			    }
-			else
-			{
-				Serial.println(output);
+			}
 			*/
 
 
@@ -151,12 +129,8 @@ void loop()
 			double output1 = compensate_slack(output, 1); //M1
 			double output2 = compensate_slack(output, 0); //M2
 
-			md.setM1Speed(-enc_direction * output1);
-			md.setM2Speed(enc_direction * output2);
-
-
-			// if using deadzone, need this close bracket
-			//}
+			md.setM1Speed(-output1);
+			md.setM2Speed(output2);
 		}
 	}
 
