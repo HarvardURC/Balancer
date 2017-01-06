@@ -200,7 +200,6 @@ void loop()
 	Serial.print(output);    Serial.print(",");
 	Serial.print(kP);        Serial.print(",");
 	Serial.print(kI);		 Serial.print(",");
-	Serial.print(kI);		 Serial.print(",");
 	Serial.println(kD);
 }
 
