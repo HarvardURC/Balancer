@@ -79,9 +79,13 @@ float kD = 0.18;
 //float kI = 0;
 //float kD = 0.9;
 
-float kP = 38;
+//float kP = 38;
+//float kI = 0;
+//float kD = 0.9;
+
+float kP = 18;
 float kI = 0;
-float kD = 0.9;
+float kD = 0.2;
 
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
 
@@ -120,7 +124,7 @@ void setup()
 	}
 
 	// our setpoint for the pid loop
-	setPoint = 0;
+	setPoint = -3;
 
 	// Arduino PID Library setups
 	pid.SetMode(AUTOMATIC);
