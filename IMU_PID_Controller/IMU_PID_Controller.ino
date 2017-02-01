@@ -38,12 +38,50 @@ DualVNH5019MotorShield md;
 
 /* PID object and required globals */
 
-double output, pitch, setPoint;
+double output, pitch, setPoint, send_pitch;
 
 // pid consts used with serial input to modify constants
-float kP = 5.3;
+
+/*float kP = 5.3;
 float kI = 0;
 float kD = 0.18;
+*/
+
+//float kP = 28;
+//float kI = 0;
+//float kD = 1.5;
+
+//float kP = 28;
+//float kI = 0;
+//float kD = 1.3;
+
+//float kP = 28.5;
+//float kI = 0;
+//float kD = 1.2;
+
+
+//float kP = 29.6;
+//float kI = 0;
+//float kD = 1.2;
+
+
+//float kP = 30.2;
+//float kI = 0;
+//float kD = 0;
+
+
+//float kP = 34.5;
+//float kI = 0;
+//float kD = 0.9;
+
+
+//float kP = 38;
+//float kI = 0;
+//float kD = 0.9;
+
+float kP = 38;
+float kI = 0;
+float kD = 0.9;
 
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
 
@@ -108,9 +146,25 @@ void loop()
 
 		// get the z orientation
 		pitch = event.orientation.z;
+		send_pitch = pitch;
+
+		// if z has changed update pos. and find which direction we rotated
+		/* REVISIT THIS let pid calculate +/- */
+		int enc_direction;
+		if (pitch < 0)
+		{
+			enc_direction = 1;
+		}
+		if (pitch > 0)
+		{
+			enc_direction = -1;
+		}
+		
+		pitch = abs(pitch);
+
 
 		// if we're out of control stop motors.
-		if (abs(pitch) > 45)
+		if (pitch > 45)
 		{
 			md.setM1Speed(0);
 			md.setM2Speed(0);
@@ -129,6 +183,8 @@ void loop()
 
 			pid.Compute(); // use pid loop to calculate output
 
+
+			
 			// experimental code, fixing motor "inequality" in either direction
 			// (turns more easily in one direction than the other)
 			/* if (event.orientation.z < 0)
@@ -136,11 +192,11 @@ void loop()
 				double output1 = compensate_slack(output, 1) + 15;
 				double output2 = compensate_slack(output, 0) + 15;
 			}*/
-			double output1 = compensate_slack(output, 1); //M1
-			double output2 = compensate_slack(output, 0); //M2
+			//double output1 = compensate_slack(output, 1); //M1
+			//double output2 = compensate_slack(output, 0); //M2
 
-			md.setM1Speed(-output1);
-			md.setM2Speed(output2);
+			md.setM1Speed(-output * enc_direction);
+			md.setM2Speed(output * enc_direction);
 		}
 	}
 	// if serial data input is avaiable (modify pid constants)
@@ -195,7 +251,7 @@ void loop()
 	Serial.print(mag.x());   Serial.print(",");
 	Serial.print(mag.y());	 Serial.print(",");
 	Serial.print(mag.z());	 Serial.print(",");
-	Serial.print(pitch); 	 Serial.print(",");
+	Serial.print(send_pitch); 	 Serial.print(",");
 	Serial.print(setPoint);  Serial.print(",");
 	Serial.print(output);    Serial.print(",");
 	Serial.print(kP);        Serial.print(",");
