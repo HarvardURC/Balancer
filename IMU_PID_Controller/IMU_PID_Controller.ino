@@ -42,58 +42,51 @@ double output, pitch, setPoint, send_pitch;
 
 // pid consts used with serial input to modify constants
 
-/*float kP = 5.3;
-float kI = 0;
-float kD = 0.18;
-*/
-
-//float kP = 28;
+//float kP = 24;
 //float kI = 0;
-//float kD = 1.5;
+//float kD = 0.4;
 
-//float kP = 28;
+
+
+//float kP = 20.1;
 //float kI = 0;
-//float kD = 1.3;
+//float kD = 0.29;
 
-//float kP = 28.5;
+
+//float kP = 21.5;
+//float kI = 0.0;
+//float kD = 0.2;
+
+//float kP = 24;   // good w/ setpoint 3.7
 //float kI = 0;
-//float kD = 1.2;
+//float kD = 0.45;
 
 
-//float kP = 29.6;
-//float kI = 0;
-//float kD = 1.2;
+//float kP = 24.7;   // pretty good w/ setpoint 3.7
+//float kI = 20;
+//float kD = 0.45;
 
 
-//float kP = 30.2;
-//float kI = 0;
-//float kD = 0;
+float kP = 25;   // best so far w/ setpoint 3.7
+float kI = 0.0;
+float kD = 0.45;
 
+//float kP = 25.6;   // best so far w/ setpoint 3.7
+//float kI = 0.0;
+//float kD = 0.45;
 
-//float kP = 34.5;
-//float kI = 0;
-//float kD = 0.9;
+//float kP = 24;
+//float kI = 40;		?
+//float kD = 0.45;
 
-
-//float kP = 38;
-//float kI = 0;
-//float kD = 0.9;
-
-//float kP = 38;
-//float kI = 0;
-//float kD = 0.9;
-
-float kP = 18;
-float kI = 0;
-float kD = 0.2;
 
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
 
 
 
 // was 65/60
-float MOTORSLACK_1 = 65;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
-float MOTORSLACK_2 = 55;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
+float MOTORSLACK_1 = 26.5;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
+float MOTORSLACK_2 = 25;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
 
 // timer setup: we're running on a 10 ms loop
 long previousMillis = 0;
@@ -123,8 +116,10 @@ void setup()
 		while (1);
 	}
 
+	bno.setExtCrystalUse(true);
+
 	// our setpoint for the pid loop
-	setPoint = -3;
+	setPoint = 3.7; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
 
 	// Arduino PID Library setups
 	pid.SetMode(AUTOMATIC);
@@ -150,57 +145,25 @@ void loop()
 
 		// get the z orientation
 		pitch = event.orientation.z;
-		send_pitch = pitch;
 
 		// if z has changed update pos. and find which direction we rotated
 		/* REVISIT THIS let pid calculate +/- */
-		int enc_direction;
-		if (pitch < 0)
-		{
-			enc_direction = 1;
-		}
-		if (pitch > 0)
-		{
-			enc_direction = -1;
-		}
 		
-		pitch = abs(pitch);
-
-
 		// if we're out of control stop motors.
-		if (pitch > 45)
+		if (abs(pitch) > 45)
 		{
 			md.setM1Speed(0);
 			md.setM2Speed(0);
 		}
 		else
 		{
-			// commented out option to create a deadzone when robot within 1 deg of ctr
-			/*
-			if (pitch < 1)
-			{
-				md.setM1Speed(0);
-				md.setM2Speed(0);
-			}
-			*/
-
-
 			pid.Compute(); // use pid loop to calculate output
 
+			double output1 = compensate_slack(output, 1); //M1
+			double output2 = compensate_slack(output, 0); //M2
 
-			
-			// experimental code, fixing motor "inequality" in either direction
-			// (turns more easily in one direction than the other)
-			/* if (event.orientation.z < 0)
-			{
-				double output1 = compensate_slack(output, 1) + 15;
-				double output2 = compensate_slack(output, 0) + 15;
-			}*/
-			//double output1 = compensate_slack(output, 1); //M1
-			//double output2 = compensate_slack(output, 0); //M2
-
-			md.setM1Speed(-output * enc_direction);
-			md.setM2Speed(output * enc_direction);
+			md.setM1Speed(output1); //26.5
+			md.setM2Speed(-output2); // 25
 		}
 	}
 	// if serial data input is avaiable (modify pid constants)
@@ -255,7 +218,7 @@ void loop()
 	Serial.print(mag.x());   Serial.print(",");
 	Serial.print(mag.y());	 Serial.print(",");
 	Serial.print(mag.z());	 Serial.print(",");
-	Serial.print(send_pitch); 	 Serial.print(",");
+	Serial.print(pitch); 	 Serial.print(",");
 	Serial.print(setPoint);  Serial.print(",");
 	Serial.print(output);    Serial.print(",");
 	Serial.print(kP);        Serial.print(",");
@@ -273,11 +236,25 @@ double compensate_slack(double Output, bool A)
 
 	if (A)
 	{
-		Output = Output + MOTORSLACK_1;
+		if (Output > 0)
+		{
+			Output += MOTORSLACK_1;
+		} 
+		else
+		{
+			Output -= MOTORSLACK_1;
+		}
 	}
 	else
 	{
-		Output = Output + MOTORSLACK_2;
+		if (Output > 0)
+		{
+			Output += MOTORSLACK_2;
+		}
+		else
+		{
+			Output -= MOTORSLACK_2;
+		}
 	}
 
 	// ensure output remains within bounds of the motor sets
