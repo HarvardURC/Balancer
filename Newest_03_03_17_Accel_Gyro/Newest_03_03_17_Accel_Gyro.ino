@@ -25,12 +25,29 @@ double output, pitch, setPoint, send_pitch;
 //
 int gyro_angle;
 int acc_angle;
-int gyro_rate;
-
+double gyro_rate;
+/*
+int val_sensor;
+float accZ = 0;
+float accY = 0;
+float x1=0;
+float y1=0;
+float x2=0;
+float y2=0;
+float actAngle=0;  
+float actAngleC=0;  
+float actAngleRG=0;
+float actAngleRA=0;
+float actAngleC2=0;
+*/
 unsigned long current_time = 0;               //timer
 unsigned long  delta_t = 0;            //delta time or how long it takes to execute data acquisition 
 int lastLoopTime=5;
-
+float x_angle=0;
+float x_angleC=0;
+float x_angleRG=0;
+float  x_angleRA=0;
+float x_angle2C=0;
 
 float MOTORSLACK_1 = 30;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
 float MOTORSLACK_2 = 30;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
@@ -90,9 +107,8 @@ void loop()
 	acc_angle = getAccAngle() * 180/pi;
 	imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
 
-	Serial.println(acc_angle);
-	gyro_rate = gyro.z();
-
+	gyro_rate = gyro.x();
+	
 	
 	
 
