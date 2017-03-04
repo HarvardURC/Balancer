@@ -28,17 +28,16 @@ double actAngleC = 0;
 
 unsigned long current_time = 0;               //timer
 unsigned long  delta_t = 0;            //delta time or how long it takes to execute data acquisition 
-int lastLoopTime=5;
 float x_angleC=0;
 
 float MOTORSLACK_1 = 30;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
 float MOTORSLACK_2 = 30;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
 
-float Kp = 30;   // crrent best @ setpoint 0.35
+float Kp = 35;   // crrent best @ setpoint 0.35
 float Ki = 0;
 float Kd = 0;
 
-float tau = 0.075;
+float tau = 0.7;
 float a = 0.0;
 
 PID pid(&actAngleC, &output, &setPoint, Kp, Ki, Kd, AUTOMATIC);
@@ -91,7 +90,7 @@ void loop()
 
 	gyro_rate = (gyro.x() * 4068) / 71; // convert gyro in radians to degrees
 	actAngleC = complementary(acc_angle, gyro_rate, delta_t);    // calculate Absolute Angle with complementary filter
-	
+
 		// if z has changed update pos. and find which direction we rotated
 		
 		// if we're out of control stop motors.
@@ -103,11 +102,11 @@ void loop()
 		else
 		{
 			pid.Compute();
-			//double output1 = compensate_slack(output, 1); //M1
-			//double output2 = compensate_slack(output, 0); //M2
+			double output1 = compensate_slack(output, 1); //M1
+			double output2 = compensate_slack(output, 0); //M2
 
-			md.setM1Speed(-output); //26.5
-			md.setM2Speed(output); // 25
+			md.setM1Speed(-output1); 
+			md.setM2Speed(output2); 
 		}
 	
 }
@@ -120,12 +119,15 @@ float getAccAngle()
 	return (atan2(accel.y(), accel.z()));
 }
 
-double complementary(float new_angle, float new_rate, int looptime)
+double complementary(float new_angle, float new_rate, unsigned long looptime)
 {
 	float dtC = float(looptime)/1000.0;
 	a = tau/(tau + dtC);
-	x_angleC = a* (x_angleC + new_rate * dtC) + (1-a) * (new_angle);
 
+	//angle = (1-alpha)*(angle + gyro * dt) + (alpha)*(acc)
+	 x_angleC= a* (x_angleC + new_rate * dtC) + (1-a) * (new_angle);
+
+	//x_angleC = (0.98)* (x_angleC + new_rate * dtC) + (0.02) * (new_angle);
 	return x_angleC;
 }
 
