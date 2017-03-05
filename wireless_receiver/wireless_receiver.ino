@@ -19,11 +19,15 @@ void setup()
 
 void loop()
 {
+  Serial.print("Balancer");
   if (radio.available())
   {
-    char text[32] = {0};
-    radio.read(&text, sizeof(text));
+    Serial.print("Balancer");
+    int joystick[2] = {0};
+    radio.read(&joystick, sizeof(joystick));
     
-    Serial.println(text);
+    Serial.print(joystick[0]);
+    Serial.print(" ");
+    Serial.println(joystick[1]);
   }
 }

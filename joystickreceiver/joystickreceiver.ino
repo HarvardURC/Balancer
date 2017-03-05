@@ -3,8 +3,10 @@
 #include <RF24.h>
 
 RF24 radio(7, 8);
+RF24 radio2(7,8);
 
 const byte rxAddr[6] = "00001";
+const byte rxAddr2[6] = "00002";
 
 void setup()
 {
@@ -13,13 +15,12 @@ void setup()
   
   radio.begin();
   radio.openReadingPipe(0, rxAddr);
-  
   radio.startListening();
 }
 
 void loop()
 {
-  if (radio.available())
+   if (radio.available())
   {
     int joystick[2] = {0};
     radio.read(&joystick, sizeof(joystick));
@@ -28,5 +29,6 @@ void loop()
     Serial.print(" ");
     Serial.println(joystick[1]);
   }
+  delay(10);
 }
 
