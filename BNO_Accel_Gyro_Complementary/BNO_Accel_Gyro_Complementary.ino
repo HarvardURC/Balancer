@@ -76,8 +76,6 @@ void setup()
 	pid.SetMode(AUTOMATIC);
 	pid.SetOutputLimits(-255, 255);
 	pid.SetSampleTime(10);
-
-
 }
 
 void loop()
