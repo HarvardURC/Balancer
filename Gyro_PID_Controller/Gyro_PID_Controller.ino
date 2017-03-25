@@ -30,24 +30,33 @@ double output, pitch, setPoint, send_pitch;
 
 // pid consts used with serial input to modify constants
 
-//float kP = 41.2;   // crrent best @ setpoint 0.35
-//float kP = 55;   // crrent best @ setpoint 0.35
-//float kI = 0.0;
-//float kD = 0.0;
-
-//float kP = 52;   // crrent best @ setpoint -0.68
-//float kI = 60;
-//float kD = 1.8;
-
-//float kP = 35;   // crrent best @ setpoint 0
-//float kI = 0;
-//float kD = 1.8;
-
-float kP = 45;   // crrent best @ setpoint -0.68
-float kI = 0;
-float kD = 1.8;
+//float kP = 7.3;   // crrent best @ setpoint 0.6
+//float kI = 0.01;
+//float kD = 0.5;
 
 
+//float kP = 8.7;   // crrent best @ setpoint 0.6
+//float kI = 0.01;
+//float kD = 0.51;
+
+//float kP = 9.5;   // crrent best @ setpoint 0.6
+//float kI = 0.01;
+//float kD = 0.55;
+
+//float kP = 10;   // crrent best @ setpoint 0.2
+//float kI = 0.01; //OSCILLATING AROUND CTR
+//float kD = 0.5;
+
+
+float kP = 10;   // crrent best @ setpoint 0.3
+float kI = 0.0;
+float kD = 0.48;
+
+// -----------------------------------------
+
+//float kP = 10.9;   // crrent best @ setpoint 0.1, with heigher base
+//float kI = 0.01;
+//float kD = 0.4;
 
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
 
@@ -92,7 +101,7 @@ void setup()
 	bno.setExtCrystalUse(true);
 
 	// our setpoint for the pid loop
-	setPoint = 0; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
+	setPoint = 0.3; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
 
 	// Arduino PID Library setups
 	pid.SetMode(AUTOMATIC);
@@ -113,10 +122,10 @@ void loop()
 		previousMillis = currentMillis;
 
 		// get new gyro data
-		imu::Vector<3> gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+		imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
 		// get the z orientation
-		pitch = gyroscope.z();
+		pitch = euler.y();
 
 		// if z has changed update pos. and find which direction we rotated
 		
@@ -130,13 +139,17 @@ void loop()
 		{
 			pid.Compute(); // use pid loop to calculate output
 
-			double output1 = compensate_slack(output, 1); //M1
-			double output2 = compensate_slack(output, 0); //M2
+			//double output1 = compensate_slack(output, 1); //M1
+			//double output2 = compensate_slack(output, 0); //M2
 
-			md.setM1Speed(output1); //26.5
-			md.setM2Speed(-output2); // 25
+			md.setM1Speed(output); //26.5
+			md.setM2Speed(-output); // 25
 		}
 	}
+
+	Serial.println(pitch);
+	
+
 
 }
 

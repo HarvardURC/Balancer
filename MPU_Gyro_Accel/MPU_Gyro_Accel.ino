@@ -9,20 +9,28 @@
 #define RMotor_offset 100
 #define LMotor_offset 100
 #include "DualVNH5019MotorShield.h"
+#include <PID_v1.h>
+
 DualVNH5019MotorShield md;
-float kp, ki, kd; 
+float kp = 5;
+float ki = 0;
+float kd = 0; 
 unsigned long preTime = 0;
 float SampleTime = 0.08;
 unsigned long lastTime;
-float r_angle, f_angle, omega;
+double r_angle, f_angle, omega;
 int timeChange; 
-float Input, Output;
+double setPoint, Output;
 float errSum, dErr, error, lastErr;
 float LOutput,ROutput;
 float Run_Speed = 0, Run_Speed_K = 0, Run_Speed_T = 0;
 float Turn_Speed = 0, Turn_Speed_K = 0, outputl =0, outputr =0;
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
+
+PID pid(&f_angle, &Output, &setPoint, kp, ki, kd, AUTOMATIC);
+
+
 void setup(){
   Wire.begin();
   Wire.beginTransmission(MPU_addr);
@@ -30,12 +38,16 @@ void setup(){
   Wire.write(0);     // set to zero (wakes up the MPU-6050)
   Wire.endTransmission(true);
   Serial.begin(115200);
-  kp = 41;
-  kd =0;//1.4; //was
-  ki = 0;
+
   md.init();
   md.setM1Speed(0);
   md.setM2Speed(0);
+  setPoint = 0;
+
+  // Arduino PID Library setups
+  pid.SetMode(AUTOMATIC);
+  pid.SetOutputLimits(-255, 255);
+  pid.SetSampleTime(10);
 }
 void loop(){
   //md.setM1Speed(250);
@@ -59,20 +71,12 @@ void loop(){
   float r_angle = (atan2(AcY, AcZ) * 180 / pi + Angle_offset);
   float omega =  Gyr_Gain * (GyX) + Gry_offset; 
   f_angle = A * (f_angle + omega * dt) + (1 - A) * r_angle; 
-  timeChange = (now - lastTime);
-  if(timeChange >= SampleTime){
-    Input = f_angle;
-    error = Input;
-    errSum += error * timeChange;
-    dErr = (error - lastErr) / timeChange;
-    Output = kp * error + ki * errSum + kd * dErr;
-    LOutput = Output + Run_Speed + Turn_Speed;  Serial.print("  LOutput=");Serial.print(outputl);
-    ROutput = Output + Run_Speed - Turn_Speed;  Serial.print("  ROutput=");Serial.println(outputr);
-    lastErr = error;
-    lastTime = now;
-  }
+  pid.Compute();
+  LOutput = Output + Run_Speed + Turn_Speed;
+  ROutput = Output + Run_Speed - Turn_Speed;
   
-  Serial.print("AcX = "); Serial.print(AcX);
+  
+  /*Serial.print("AcX = "); Serial.print(AcX);
   Serial.print(" | AcY = "); Serial.print(AcY);
   Serial.print(" | AcZ = "); Serial.print(AcZ);
   Serial.print(" | Tmp = "); Serial.print(Tmp/340.00+36.53);  //equation for temperature in degrees C from datasheet
@@ -81,6 +85,7 @@ void loop(){
   Serial.print(" sample"); Serial.print(SampleTime);
   Serial.print(" timeChange"); Serial.print(timeChange);
   Serial.print(" | r_angle = "); Serial.print(r_angle);
+  */
   outputl = map((LOutput+LMotor_offset), -1024,1023,-400,400);
   outputr = map((ROutput+RMotor_offset), -1024,1023,400,-400);
   md.setM2Speed(outputl);

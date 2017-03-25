@@ -33,7 +33,7 @@ float x_angleC=0;
 float MOTORSLACK_1 = 30;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
 float MOTORSLACK_2 = 30;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
 
-float Kp = 70;   // crrent best @ setpoint 0.35
+float Kp = 5;   // crrent best @ setpoint 0.35
 float Ki = 0;
 float Kd = 0;
 
@@ -88,7 +88,7 @@ void loop()
 	imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
 
-	gyro_rate = (gyro.x() * 4068) / 71; // convert gyro in radians to degrees
+	gyro_rate = (gyro.z() * 4068) / 71; // convert gyro in radians to degrees
 	actAngleC = complementary(acc_angle, gyro_rate, delta_t);    // calculate Absolute Angle with complementary filter
 
 		// if z has changed update pos. and find which direction we rotated
@@ -105,12 +105,12 @@ void loop()
 			//double output1 = compensate_slack(output, 1); //M1
 			//double output2 = compensate_slack(output, 0); //M2
 
-			md.setM1Speed(-output); 
-			md.setM2Speed(output); 
+			md.setM1Speed(output); 
+			md.setM2Speed(-output); 
 		}
 
 		Serial.print(actAngleC); Serial.print(",");
-		Serial.println(-euler.z());
+		Serial.println(euler.y());
 }
 
 // CREDIT: http://robottini.altervista.org/kalman-filter-vs-complementary-filter
@@ -118,7 +118,7 @@ void loop()
 float getAccAngle()
 {
 	imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
-	return (atan2(accel.y(), accel.z()));
+	return (atan2(accel.x(), accel.z()));
 }
 
 double complementary(float new_angle, float new_rate, unsigned long looptime)
