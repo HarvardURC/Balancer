@@ -13,6 +13,12 @@ int VRy = A1;
 int x_pos, y_pos, past_x_pos, past_y_pos, button_state, past_button;
 int button_pin = 7;
 
+struct payload_t
+{
+   double temps[1];
+};
+
+
 void setup()
 {
 	button_state = 1;
@@ -37,8 +43,8 @@ void setup()
 void loop()
 {
 	listen_();
-	delay(10);
-	transmit();
+	//delay(10);
+	//transmit();
 }
 
 // listen for incoming data
@@ -47,11 +53,14 @@ void listen_()
 	if (radio.available() )
 	{	
 		// buffer to store payload
-		char command[32] = {0};
+		payload_t payload;
 
 		// reading payload
-		radio.read(&command, sizeof(command) );
-		Serial.println(command);
+		radio.read(&payload, sizeof(payload) );
+		for (int i = 0; i < 1; i++)
+		{
+			Serial.println(payload.temps[i]);
+		}
 	}
 }
 

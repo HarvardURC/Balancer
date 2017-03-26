@@ -4,6 +4,15 @@
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 #include <PID_v1.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+// http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
+// radio variables
+RF24 radio(3, 5);
+const uint64_t pipe = 0xF0F0F0F0AA;
+
 
 /*
   CREDIT: ARDUINO BNO055 EXAMPLE CODE
@@ -58,6 +67,11 @@ float kD = 0.48;
 //float kI = 0.01;
 //float kD = 0.4;
 
+struct payload_t
+{
+   double temps[1];
+};
+
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
 
 
@@ -101,12 +115,19 @@ void setup()
 	bno.setExtCrystalUse(true);
 
 	// our setpoint for the pid loop
-	setPoint = 0.3; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
+	setPoint = 0.35 ; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
 
 	// Arduino PID Library setups
 	pid.SetMode(AUTOMATIC);
 	pid.SetOutputLimits(-255, 255);
 	pid.SetSampleTime(10);
+
+	// radio setup
+ 	radio.begin();
+  	radio.setRetries(15, 14); // delay of 1ms, 1 retries
+  	radio.openReadingPipe(1, pipe);
+  	radio.startListening(); 
+  	radio.printDetails();  
 
 }
 
@@ -147,11 +168,37 @@ void loop()
 		}
 	}
 
-	Serial.println(pitch);
-	
 
+	transmit();
 
 }
+
+void transmit()
+{
+	
+// for more detailed debug
+//	imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+//	imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+//	imu::Vector<3> mag = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
+	
+	//float temps[] = {accel.x(), accel.y(), accel.z(), gyro.x(), gyro.y(), gyro.z(), mag.x(), mag.y(), mag.z(), pitch, setPoint, output, kP, kI, kD};
+	// can't listen while writing 
+	radio.stopListening(); 
+	radio.openWritingPipe(pipe);
+	payload_t payload = {pitch};
+
+	//for (int i = 0; i < 15; i++)
+//	{
+Serial.println(payload.temps[0]);
+		radio.write(&payload, sizeof(payload) );
+		//radio.write(",", sizeof(char) );
+//	}
+	//Serial.println("");
+	radio.openReadingPipe(1,pipe); 
+	    // begin listening again
+	    radio.startListening();
+}
+
 
 /*CREDIT ManpreetSingh80 on Github
    https://github.com/ManpreetSingh80/CHAPPIE/blob/master/SelfBalance_robot0_66_withoutEEPROM/SelfBalance_robot0_66_withoutEEPROM.ino
