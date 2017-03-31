@@ -7,6 +7,7 @@
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
+#include <avr/dtostrf.h>.
 
 // http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
 // radio variables
@@ -69,7 +70,7 @@ float kD = 0.48;
 
 struct payload_t
 {
-   double temps[1];
+	double temps[1];
 };
 
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
@@ -123,11 +124,11 @@ void setup()
 	pid.SetSampleTime(10);
 
 	// radio setup
- 	radio.begin();
-  	radio.setRetries(15, 14); // delay of 1ms, 1 retries
-  	radio.openReadingPipe(1, pipe);
-  	radio.startListening(); 
-  	radio.printDetails();  
+	radio.begin();
+	radio.setRetries(1, 2); // delay of 1ms, 2 retries
+	radio.openReadingPipe(1, pipe);
+	radio.startListening();
+	radio.printDetails();
 
 }
 
@@ -149,7 +150,7 @@ void loop()
 		pitch = euler.y();
 
 		// if z has changed update pos. and find which direction we rotated
-		
+
 		// if we're out of control stop motors.
 		if (abs(pitch) > 45)
 		{
@@ -168,35 +169,52 @@ void loop()
 		}
 	}
 
-
+	listen_();
 	transmit();
+	Serial.println(setPoint);
 
+}
+
+void listen_() 
+{
+	if (radio.available() )
+	{	
+		char buffer[30];              
+
+     		radio.read(buffer, 30);
+		// buffer to store payload
+			setPoint = atof(buffer);
+
+		// reading payload
+		//radio.read(&payload, sizeof(payload) );
+	//	for (int i = 0; i < 1; i++)
+	//	{
+	//		Serial.println(payload.temps[i]);
+	//	}
+	}
 }
 
 void transmit()
 {
-	
+
 // for more detailed debug
 //	imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
 //	imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
 //	imu::Vector<3> mag = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
-	
-	//float temps[] = {accel.x(), accel.y(), accel.z(), gyro.x(), gyro.y(), gyro.z(), mag.x(), mag.y(), mag.z(), pitch, setPoint, output, kP, kI, kD};
-	// can't listen while writing 
-	radio.stopListening(); 
-	radio.openWritingPipe(pipe);
-	payload_t payload = {pitch};
 
-	//for (int i = 0; i < 15; i++)
-//	{
-Serial.println(payload.temps[0]);
-		radio.write(&payload, sizeof(payload) );
-		//radio.write(",", sizeof(char) );
-//	}
-	//Serial.println("");
-	radio.openReadingPipe(1,pipe); 
-	    // begin listening again
-	    radio.startListening();
+	//float temps[] = {accel.x(), accel.y(), accel.z(), gyro.x(), gyro.y(), gyro.z(), mag.x(), mag.y(), mag.z(), pitch, setPoint, output, kP, kI, kD};
+	// can't listen while writing
+	radio.stopListening();
+	radio.openWritingPipe(pipe);
+	//Serial.println(pitch);
+
+	char buffer[100];              
+	dtostrf(pitch, 5, 3, buffer);
+	radio.write(buffer,100);
+
+	radio.openReadingPipe(1,pipe);
+	// begin listening again
+	radio.startListening();
 }
 
 
@@ -213,7 +231,7 @@ double compensate_slack(double Output, bool A)
 		if (Output > 0)
 		{
 			Output += MOTORSLACK_1;
-		} 
+		}
 		else
 		{
 			Output -= MOTORSLACK_1;
