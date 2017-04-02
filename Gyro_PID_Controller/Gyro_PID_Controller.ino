@@ -4,6 +4,16 @@
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 #include <PID_v1.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include <avr/dtostrf.h>.
+
+// http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
+// radio variables
+RF24 radio(3, 5);
+const uint64_t pipe = 0xF0F0F0F0AA;
+
 
 /*
   CREDIT: ARDUINO BNO055 EXAMPLE CODE
@@ -30,24 +40,38 @@ double output, pitch, setPoint, send_pitch;
 
 // pid consts used with serial input to modify constants
 
-//float kP = 41.2;   // crrent best @ setpoint 0.35
-//float kP = 55;   // crrent best @ setpoint 0.35
-//float kI = 0.0;
-//float kD = 0.0;
-
-//float kP = 52;   // crrent best @ setpoint -0.68
-//float kI = 60;
-//float kD = 1.8;
-
-//float kP = 35;   // crrent best @ setpoint 0
-//float kI = 0;
-//float kD = 1.8;
-
-float kP = 45;   // crrent best @ setpoint -0.68
-float kI = 0;
-float kD = 1.8;
+//float kP = 7.3;   // crrent best @ setpoint 0.6
+//float kI = 0.01;
+//float kD = 0.5;
 
 
+//float kP = 8.7;   // crrent best @ setpoint 0.6
+//float kI = 0.01;
+//float kD = 0.51;
+
+//float kP = 9.5;   // crrent best @ setpoint 0.6
+//float kI = 0.01;
+//float kD = 0.55;
+
+//float kP = 10;   // crrent best @ setpoint 0.2
+//float kI = 0.01; //OSCILLATING AROUND CTR
+//float kD = 0.5;
+
+
+float kP = 10;   // crrent best @ setpoint 0.3
+float kI = 0.0;
+float kD = 0.48;
+
+// -----------------------------------------
+
+//float kP = 10.9;   // crrent best @ setpoint 0.1, with heigher base
+//float kI = 0.01;
+//float kD = 0.4;
+
+struct payload_t
+{
+	double temps[1];
+};
 
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
 
@@ -92,12 +116,19 @@ void setup()
 	bno.setExtCrystalUse(true);
 
 	// our setpoint for the pid loop
-	setPoint = 0; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
+	setPoint = 0.35 ; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
 
 	// Arduino PID Library setups
 	pid.SetMode(AUTOMATIC);
 	pid.SetOutputLimits(-255, 255);
 	pid.SetSampleTime(10);
+
+	// radio setup
+	radio.begin();
+	radio.setRetries(1, 2); // delay of 1ms, 2 retries
+	radio.openReadingPipe(1, pipe);
+	radio.startListening();
+	radio.printDetails();
 
 }
 
@@ -113,13 +144,13 @@ void loop()
 		previousMillis = currentMillis;
 
 		// get new gyro data
-		imu::Vector<3> gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+		imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
 		// get the z orientation
-		pitch = gyroscope.z();
+		pitch = euler.y();
 
 		// if z has changed update pos. and find which direction we rotated
-		
+
 		// if we're out of control stop motors.
 		if (abs(pitch) > 45)
 		{
@@ -130,15 +161,62 @@ void loop()
 		{
 			pid.Compute(); // use pid loop to calculate output
 
-			double output1 = compensate_slack(output, 1); //M1
-			double output2 = compensate_slack(output, 0); //M2
+			//double output1 = compensate_slack(output, 1); //M1
+			//double output2 = compensate_slack(output, 0); //M2
 
-			md.setM1Speed(output1); //26.5
-			md.setM2Speed(-output2); // 25
+			md.setM1Speed(output); //26.5
+			md.setM2Speed(-output); // 25
 		}
 	}
 
+	listen_();
+	transmit();
+	Serial.println(setPoint);
+
 }
+
+void listen_() 
+{
+	if (radio.available() )
+	{	
+		char buffer[30];              
+
+     		radio.read(buffer, 30);
+		// buffer to store payload
+			setPoint = atof(buffer);
+
+		// reading payload
+		//radio.read(&payload, sizeof(payload) );
+	//	for (int i = 0; i < 1; i++)
+	//	{
+	//		Serial.println(payload.temps[i]);
+	//	}
+	}
+}
+
+void transmit()
+{
+
+// for more detailed debug
+//	imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+//	imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+//	imu::Vector<3> mag = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
+
+	//float temps[] = {accel.x(), accel.y(), accel.z(), gyro.x(), gyro.y(), gyro.z(), mag.x(), mag.y(), mag.z(), pitch, setPoint, output, kP, kI, kD};
+	// can't listen while writing
+	radio.stopListening();
+	radio.openWritingPipe(pipe);
+	//Serial.println(pitch);
+
+	char buffer[100];              
+	dtostrf(pitch, 5, 3, buffer);
+	radio.write(buffer,100);
+
+	radio.openReadingPipe(1,pipe);
+	// begin listening again
+	radio.startListening();
+}
+
 
 /*CREDIT ManpreetSingh80 on Github
    https://github.com/ManpreetSingh80/CHAPPIE/blob/master/SelfBalance_robot0_66_withoutEEPROM/SelfBalance_robot0_66_withoutEEPROM.ino
@@ -153,7 +231,7 @@ double compensate_slack(double Output, bool A)
 		if (Output > 0)
 		{
 			Output += MOTORSLACK_1;
-		} 
+		}
 		else
 		{
 			Output -= MOTORSLACK_1;

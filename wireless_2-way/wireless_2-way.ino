@@ -13,6 +13,13 @@ int VRy = A1;
 int x_pos, y_pos, past_x_pos, past_y_pos, button_state, past_button;
 int button_pin = 7;
 
+struct payload_t
+{
+   double temps[1];
+};
+
+payload_t payload;
+
 void setup()
 {
 	button_state = 1;
@@ -46,44 +53,46 @@ void listen_()
 {
 	if (radio.available() )
 	{	
+		bool done = false;
+					char buffer[100];              
+
+		while (!done)
+		{
+			
+     		radio.read(buffer, 100);
+     		done = true;
 		// buffer to store payload
-		char command[32] = {0};
 
 		// reading payload
-		radio.read(&command, sizeof(command) );
-		Serial.println(command);
+		//radio.read(&payload, sizeof(payload) );
+	//	for (int i = 0; i < 1; i++)
+	//	{
+	//		Serial.println(payload.temps[i]);
+	//	}
+		}
+		Serial.println(buffer);
 	}
 }
 
+
 void transmit()
 {
-  //x_pos = analogRead(VRx);
-  //Serial.println(x_pos);
-  button_state = digitalRead(button_pin);
-  
-  // y_pos = analogRead(VRy);
-  // something new to write
-  //if (x_pos != past_x_pos || y_pos != past_y_pos)
- // {
- 
-  //	past_x_pos = x_pos;
- // 	past_y_pos = y_pos;
-
-	if (button_state != past_button)
+	if (Serial.available() > 0)
 	{
-		past_button = button_state;
-  		const char text[] = "Hi balancer";
-	
-	  	// can't listen while writing 
+		// get incoming serial data (until newline)
+		char buffer[30];              
+
+		String setPoint = Serial.readStringUntil('\n');
+		setPoint.toCharArray(buffer, 30);
+		// can't listen while writing 
 	  	radio.stopListening(); 
 	  	radio.openWritingPipe(pipe);
-	  	radio.write(&text, sizeof(text) );
+	  	radio.write(buffer, 30);
 	  	// done writing, back to reading pipe
 	    radio.openReadingPipe(1,pipe); 
 	    // begin listening again
 	    radio.startListening();
 	    // not spamming comms
-	    delay(20);
 	}
 
 }

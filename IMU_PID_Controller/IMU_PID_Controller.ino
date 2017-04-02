@@ -167,24 +167,27 @@ void loop()
 		}
 	}
 	// if serial data input is avaiable (modify pid constants)
+	
+	
 	if (Serial.available() > 0)
 	{
 		// get incoming serial data (until newline)
 		String inSerialData = Serial.readStringUntil('\n');
-
+	
 		// get first comma position
 		int delimIndx = inSerialData.indexOf(",");
-
+	
 		// get 2nd comma position
 		int delimIndx2 = inSerialData.indexOf(",", delimIndx+1);
-
+	
 		// use substrings to get our constants
 		kP = inSerialData.substring(0, delimIndx).toFloat();
 		kI = inSerialData.substring(delimIndx+1, delimIndx2).toFloat();
-		kD = inSerialData.substring(delimIndx2).toFloat();
+		kD = inSerialData.substring(delimIndx2 + 1).toFloat();
 		// set our new PID constantss
 		pid.SetTunings(kP, kI, kD);
 	}
+
 
 	// graphing data
 	// CREDIT: farrellf, https://github.com/farrellf/Telemetry-Viewer
