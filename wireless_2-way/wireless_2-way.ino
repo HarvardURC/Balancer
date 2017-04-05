@@ -5,7 +5,7 @@
 // http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
 // radio variables
 RF24 radio(9, 10);
-const uint64_t pipe = 0xF0F0F0F0AA;
+const uint64_t pipe = 0xF0F0F0AA;
 
 // joystick variables
 int VRx = A0;
