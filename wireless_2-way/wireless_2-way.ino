@@ -27,7 +27,7 @@ void setup()
 	Serial.begin(115200);
 	// radio setup
  	radio.begin();
-  	radio.setRetries(15, 10); // delay of 15ms, 10 retries
+  	radio.setRetries(2, 5); // delay of 15ms, 10 retries
   	radio.openReadingPipe(1, pipe);
   	radio.startListening(); 
   	radio.printDetails();  
@@ -54,12 +54,12 @@ void listen_()
 	if (radio.available() )
 	{	
 		bool done = false;
-					char buffer[100];              
+		char buffer[5];              
 
 		while (!done)
 		{
 			
-     		radio.read(buffer, 100);
+     		radio.read(buffer, 5);
      		done = true;
 		// buffer to store payload
 
@@ -77,17 +77,19 @@ void listen_()
 
 void transmit()
 {
+
+	
 	if (Serial.available() > 0)
 	{
 		// get incoming serial data (until newline)
-		char buffer[30];              
+		char buffer[5];              
 
 		String setPoint = Serial.readStringUntil('\n');
-		setPoint.toCharArray(buffer, 30);
+		setPoint.toCharArray(buffer, 5);
 		// can't listen while writing 
 	  	radio.stopListening(); 
 	  	radio.openWritingPipe(pipe);
-	  	radio.write(buffer, 30);
+	  	radio.write(buffer, 5);
 	  	// done writing, back to reading pipe
 	    radio.openReadingPipe(1,pipe); 
 	    // begin listening again

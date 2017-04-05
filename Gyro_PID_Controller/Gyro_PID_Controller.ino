@@ -179,9 +179,9 @@ void listen_()
 {
 	if (radio.available() )
 	{	
-		char buffer[30];              
+		char buffer[10];              
 
-     		radio.read(buffer, 30);
+     		radio.read(buffer, 10);
 		// buffer to store payload
 			setPoint = atof(buffer);
 
@@ -208,9 +208,9 @@ void transmit()
 	radio.openWritingPipe(pipe);
 	//Serial.println(pitch);
 
-	char buffer[100];              
+	char buffer[10];              
 	dtostrf(pitch, 5, 3, buffer);
-	radio.write(buffer,100);
+	radio.write(buffer,10);
 
 	radio.openReadingPipe(1,pipe);
 	// begin listening again
