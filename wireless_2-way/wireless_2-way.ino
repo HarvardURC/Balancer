@@ -5,7 +5,7 @@
 // http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
 // radio variables
 RF24 radio(9, 10);
-const uint64_t pipe = 0xF0F0F0AA;
+const uint64_t pipe = 0xF0F0F0F0AA;
 
 // joystick variables
 int VRx = A0;
@@ -78,25 +78,46 @@ void listen_()
 void transmit()
 {
 
-	
-	if (Serial.available() > 0)
-	{
-		// get incoming serial data (until newline)
-		char buffer[5];              
+	float value = analogRead(A0);
+  //Serial.println(value);
+  Serial.println("HIIIII");
+    value = mapfloat(value, 0,1023, -3,2.6);
+      Serial.println("BYYYYYYE");
 
-		String setPoint = Serial.readStringUntil('\n');
-		setPoint.toCharArray(buffer, 5);
-		// can't listen while writing 
-	  	radio.stopListening(); 
-	  	radio.openWritingPipe(pipe);
-	  	radio.write(buffer, 5);
-	  	// done writing, back to reading pipe
-	    radio.openReadingPipe(1,pipe); 
-	    // begin listening again
-	    radio.startListening();
-	    // not spamming comms
-	}
+  String test = (String(value));
+ // Serial.println(test);
+ Serial.println("Begin analogRead");
+  int currentanalog = analogRead(A0);
+   Serial.println("End analogRead");
 
+  int previousanalog;
+   // get incoming serial data (until newline)
+        char buffer[5];         
+                Serial.println("Reading string until");
+     
+        String setPoint = Serial.readStringUntil('\n');
+                    Serial.println("End string until");
+
+        test.toCharArray(buffer, 5);
+        // can't listen while writing 
+
+        radio.stopListening(); 
+        radio.openWritingPipe(pipe);
+                 Serial.println("Writing buffer");
+
+        radio.write(buffer, 5);
+                         Serial.println("END Writing buffer");
+
+        // done writing, back to reading pipe
+        radio.openReadingPipe(1,pipe); 
+        // begin listening again
+        
+        radio.startListening();
+        // not spamming comms
 }
 
+long mapfloat(long x, long in_min, long in_max, long out_min, long out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 
