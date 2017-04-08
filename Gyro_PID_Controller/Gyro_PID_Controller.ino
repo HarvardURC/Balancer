@@ -11,13 +11,6 @@
 #define transmit_buffer 10
 #define receive_buffer 10
 
-
-struct payload_t
-{
-	char x_val[transmit_buffer];
-	char y_val[transmit_buffer];
-};
-
 // http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
 // radio variables
 RF24 radio(3, 5);
@@ -94,6 +87,16 @@ long previousMillis = 0;
 unsigned long currentMillis;
 long interval = 10;
 
+
+
+
+
+
+struct payload_t
+{
+	float x_val;
+	float y_val;
+};
 
 payload_t payload;
 
@@ -173,8 +176,17 @@ void loop()
 			//double output1 = compensate_slack(output, 1); //M1
 			//double output2 = compensate_slack(output, 0); //M2
 		//	Serial.println(y_val);
-			md.setM1Speed(output + y_val ); //26.5
-			md.setM2Speed(-output - y_val ); // 25
+			if (y_val > 0)
+			{
+				md.setM1Speed(output + y_val ); //26.5
+				md.setM2Speed(-output ); // 25
+			}
+			else 
+			{
+				md.setM1Speed(output + y_val ); //26.5
+				md.setM2Speed(-output ); // 25
+			}
+		
 		}
 	}
 
@@ -188,12 +200,10 @@ void listen_()
 {
 	if (radio.available() )
 	{	
-     	radio.read(&payload, receive_buffer);
+     	radio.read(&payload, sizeof(payload_t));
 		// buffer to store payload
-		setPoint = atof(payload.x_val);
-		y_val = atof(payload.y_val);
-		     	Serial.println(payload.y_val);
-
+		setPoint = (payload.x_val);
+		y_val = (payload.y_val);
 
 	}
 }

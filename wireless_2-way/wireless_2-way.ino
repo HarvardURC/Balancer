@@ -19,15 +19,15 @@ int button_pin = 7;
 
 struct payload_t
 {
-	char x_val[transmit_buffer];
-	char y_val[transmit_buffer];
+	float x_val;
+	float y_val;
 };
 
 
 void setup()
 {
 	Serial.begin(115200);
-	Serial.setTimeout(1);
+	Serial.setTimeout(10);
 	// radio setup
  	radio.begin();
   	radio.setRetries(2, 5); // delay of 15ms, 10 retries
@@ -65,7 +65,7 @@ void listen_()
      		radio.read(buff, receive_buffer);
      		done = true;
 		}
-		Serial.println(buff);
+		//Serial.println(buff);
 	}
 }
 
@@ -79,17 +79,9 @@ void transmit()
 
 		//Serial.println(value);
 	straight = mapfloat(straight, 0, 1023,-6, 7.4);
-	pivot_turn = mapfloat(pivot_turn, 0, 1023, -100, 100);
-	
-		String setPoint = (String(straight));
-		String turnString = (String(pivot_turn));
-        // get incoming serial data (until newline)
-        char buff[transmit_buffer];
-        char turn_buff[transmit_buffer];    
-        setPoint.toCharArray(buff, transmit_buffer);
-        turnString.toCharArray(turn_buff, transmit_buffer);
-        memcpy(payload.x_val, buff, transmit_buffer );
-        memcpy(payload.y_val, turn_buff, transmit_buffer );
+	pivot_turn = mapfloat(pivot_turn, 0, 1023, -25, 25);
+	payload.x_val = straight;
+	payload.y_val = pivot_turn;
         // can't listen while writing 
         radio.stopListening(); 
         radio.openWritingPipe(pipe);
