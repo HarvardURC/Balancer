@@ -180,6 +180,7 @@ void listen_()
 		char buffer[receive_buffer];              
 
      	radio.read(buffer, receive_buffer);
+
 		// buffer to store payload
 		setPoint = atof(buffer);
 	}
