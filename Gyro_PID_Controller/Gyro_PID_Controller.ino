@@ -7,7 +7,10 @@
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
-#include <avr/dtostrf.h>.
+#include <avr/dtostrf.h>
+#define transmit_buffer 10
+#define receive_buffer 10
+
 
 // http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
 // radio variables
@@ -67,11 +70,6 @@ float kD = 0.48;
 //float kP = 10.9;   // crrent best @ setpoint 0.1, with heigher base
 //float kI = 0.01;
 //float kD = 0.4;
-
-struct payload_t
-{
-	double temps[1];
-};
 
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
 
@@ -179,18 +177,11 @@ void listen_()
 {
 	if (radio.available() )
 	{	
-		char buffer[30];              
+		char buffer[receive_buffer];              
 
-     		radio.read(buffer, 30);
+     	radio.read(buffer, receive_buffer);
 		// buffer to store payload
-			setPoint = atof(buffer);
-
-		// reading payload
-		//radio.read(&payload, sizeof(payload) );
-	//	for (int i = 0; i < 1; i++)
-	//	{
-	//		Serial.println(payload.temps[i]);
-	//	}
+		setPoint = atof(buffer);
 	}
 }
 
@@ -208,9 +199,9 @@ void transmit()
 	radio.openWritingPipe(pipe);
 	//Serial.println(pitch);
 
-	char buffer[100];              
+	char buffer[transmit_buffer];              
 	dtostrf(pitch, 5, 3, buffer);
-	radio.write(buffer,100);
+	radio.write(buffer,transmit_buffer);
 
 	radio.openReadingPipe(1,pipe);
 	// begin listening again
