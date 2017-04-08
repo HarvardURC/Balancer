@@ -17,9 +17,17 @@ int VRy = A1;
 int x_pos, y_pos, past_x_pos, past_y_pos, button_state, past_button;
 int button_pin = 7;
 
+struct payload_t
+{
+	char x_val[transmit_buffer];
+	char y_val[transmit_buffer];
+};
+
+
 void setup()
 {
 	Serial.begin(115200);
+	Serial.setTimeout(1);
 	// radio setup
  	radio.begin();
   	radio.setRetries(2, 5); // delay of 15ms, 10 retries
@@ -49,37 +57,48 @@ void listen_()
 	if (radio.available() )
 	{	
 		bool done = false;
-		char buffer[receive_buffer];              
+		char buff[receive_buffer];              
 
 		while (!done)
 		{
 			// buffer to store payload
-     		radio.read(buffer, receive_buffer);
+     		radio.read(buff, receive_buffer);
      		done = true;
 		}
-		Serial.println(buffer);
+		Serial.println(buff);
 	}
 }
 
 
 void transmit()
 {
-	if (Serial.available() > 0)
-	{
-		// get incoming serial data (until newline)
-		char buffer[transmit_buffer];              
+	payload_t payload;
 
-		String setPoint = Serial.readStringUntil('\n');
-		setPoint.toCharArray(buffer, transmit_buffer);
-		// can't listen while writing 
-	  	radio.stopListening(); 
-	  	radio.openWritingPipe(pipe);
-	  	radio.write(buffer, 30);
-	  	// done writing, back to reading pipe
-	    radio.openReadingPipe(1,pipe); 
-	    // begin listening again
-	    radio.startListening();
-	}
+	float straight = analogRead(A0);
+	float pivot_turn = analogRead(A1);
+
+		//Serial.println(value);
+	straight = mapfloat(straight, 0, 1023,-6, 7.4);
+	pivot_turn = mapfloat(pivot_turn, 0, 1023, -100, 100);
+	
+		String setPoint = (String(straight));
+		String turnString = (String(pivot_turn));
+        // get incoming serial data (until newline)
+        char buff[transmit_buffer];
+        char turn_buff[transmit_buffer];    
+        setPoint.toCharArray(buff, transmit_buffer);
+        turnString.toCharArray(turn_buff, transmit_buffer);
+        memcpy(payload.x_val, buff, transmit_buffer );
+        memcpy(payload.y_val, turn_buff, transmit_buffer );
+        // can't listen while writing 
+        radio.stopListening(); 
+        radio.openWritingPipe(pipe);
+        radio.write(&payload, sizeof(payload_t));
+        // done writing, back to reading pipe
+        radio.openReadingPipe(1,pipe); 
+        // begin listening again
+        radio.startListening();
+        // not spamming comms
 }
 
 long mapfloat(long x, long in_min, long in_max, long out_min, long out_max)

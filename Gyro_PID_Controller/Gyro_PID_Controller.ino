@@ -12,6 +12,12 @@
 #define receive_buffer 10
 
 
+struct payload_t
+{
+	char x_val[transmit_buffer];
+	char y_val[transmit_buffer];
+};
+
 // http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
 // radio variables
 RF24 radio(3, 5);
@@ -88,6 +94,11 @@ long previousMillis = 0;
 unsigned long currentMillis;
 long interval = 10;
 
+
+payload_t payload;
+
+float y_val;
+
 /**************************************************************************/
 /*
     Arduino setup function (automatically called at startup)
@@ -161,15 +172,15 @@ void loop()
 
 			//double output1 = compensate_slack(output, 1); //M1
 			//double output2 = compensate_slack(output, 0); //M2
-
-			md.setM1Speed(output); //26.5
-			md.setM2Speed(-output); // 25
+		//	Serial.println(y_val);
+			md.setM1Speed(output + y_val ); //26.5
+			md.setM2Speed(-output - y_val ); // 25
 		}
 	}
 
 	listen_();
 	transmit();
-	Serial.println(setPoint);
+	//Serial.println(setPoint);
 
 }
 
@@ -177,12 +188,13 @@ void listen_()
 {
 	if (radio.available() )
 	{	
-		char buffer[receive_buffer];              
-
-     	radio.read(buffer, receive_buffer);
-
+     	radio.read(&payload, receive_buffer);
 		// buffer to store payload
-		setPoint = atof(buffer);
+		setPoint = atof(payload.x_val);
+		y_val = atof(payload.y_val);
+		     	Serial.println(payload.y_val);
+
+
 	}
 }
 
@@ -198,11 +210,14 @@ void transmit()
 	// can't listen while writing
 	radio.stopListening();
 	radio.openWritingPipe(pipe);
-	//Serial.println(pitch);
 
-	char buffer[transmit_buffer];              
-	dtostrf(pitch, 5, 3, buffer);
-	radio.write(buffer,transmit_buffer);
+	payload_t payload;
+
+	//char buff[transmit_buffer];              
+	//dtostrf(pitch, 5, 3, buff);
+	//radio.write(buff,transmit_buffer);
+	//memcpy(payload.x_val, buff, transmit_buffer );
+
 
 	radio.openReadingPipe(1,pipe);
 	// begin listening again
