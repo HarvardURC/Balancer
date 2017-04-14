@@ -56,16 +56,10 @@ void listen_()
 {
 	if (radio.available() )
 	{	
-		bool done = false;
-		char buff[receive_buffer];              
-
-		while (!done)
-		{
-			// buffer to store payload
-     		radio.read(buff, receive_buffer);
-     		done = true;
-		}
-		//Serial.println(buff);
+		payload_t payload;
+		
+     	radio.read(&payload, sizeof(payload_t));
+		Serial.println(payload.x_val);
 	}
 }
 
@@ -78,8 +72,8 @@ void transmit()
 	float pivot_turn = analogRead(A1);
 
 		//Serial.println(value);
-	straight = mapfloat(straight, 0, 1023,-6, 7.4);
-	pivot_turn = mapfloat(pivot_turn, 0, 1023, -25, 25);
+	straight = mapfloat(straight, 1023, 0,-11, 7);
+	pivot_turn = mapfloat(pivot_turn, 1023, 0, -25, 25);
 	payload.x_val = straight;
 	payload.y_val = pivot_turn;
         // can't listen while writing 

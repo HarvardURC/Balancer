@@ -192,6 +192,7 @@ void loop()
 
 	listen_();
 	transmit();
+	Serial.println(pitch);
 	//Serial.println(setPoint);
 
 }
@@ -222,6 +223,7 @@ void transmit()
 	radio.openWritingPipe(pipe);
 
 	payload_t payload;
+	payload.x_val = pitch;
 
 	//char buff[transmit_buffer];              
 	//dtostrf(pitch, 5, 3, buff);
@@ -230,6 +232,8 @@ void transmit()
 
 
 	radio.openReadingPipe(1,pipe);
+	radio.write(&payload, sizeof(payload_t));
+
 	// begin listening again
 	radio.startListening();
 }
