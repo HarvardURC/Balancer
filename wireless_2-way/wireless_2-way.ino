@@ -71,7 +71,7 @@ void transmit()
 	float straight = analogRead(A0);
 	float pivot_turn = analogRead(A1);
 
-		straight = mapfloat(straight, 1023, 0,-11, 7);
+		straight = mapfloat(straight, 1023, 0,-7, 3);
 		pivot_turn = mapfloat(pivot_turn, 1023, 0, -25, 25);
 		payload.x_val = straight;
 		payload.y_val = pivot_turn;

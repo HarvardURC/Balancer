@@ -10,6 +10,12 @@
 #include <avr/dtostrf.h>
 #define transmit_buffer 10
 #define receive_buffer 10
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <SSD1306_text.h>
+
+#define OLED_RESET 1
+SSD1306_text display(OLED_RESET);
 
 // http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
 // radio variables
@@ -64,7 +70,7 @@ double output, pitch, setPoint, send_pitch;
 //float kI = 0.0;
 //float kD = 0.48;
 
-//---------------------new thumper
+//---------------------new thumper BEFORE LCD
 //float kP = 8.1;
 //float kI = 0.0;
 //float kD = 0.15;
@@ -94,7 +100,8 @@ float kD = 0.38;
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
 
 
-
+int potPin = 0;
+long potVal = 0.0;
 // was 65/60
 //float MOTORSLACK_1 = 26.5;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
 //float MOTORSLACK_2 = 25;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
@@ -129,6 +136,10 @@ void setup()
 {
 	Serial.begin(115200);  // serial for debug
 	Serial.setTimeout(10);
+
+	// OLED setup
+    display.init();
+    display.clear();                 // clear screen
 
 	md.init();	// dualvnh lib for motor controller
 
@@ -165,6 +176,9 @@ void setup()
 
 void loop()
 {
+	potVal = analogRead(potPin);
+	kP = map(potVal, 0, 1023, 0, 20000);
+	kP = kP / 1000.0;
 	imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
 		// get the z orientation
@@ -202,9 +216,11 @@ void loop()
 	//transmit();
 	//	radio.printDetails();
 
-	Serial.println(pitch);
+	//Serial.println(pitch);
 	//Serial.println(setPoint);
-
+      display.setCursor(6,40);
+      display.setTextSize(2,1);
+     display.print(kP,3);
 }
 
 void listen_() 
@@ -285,5 +301,9 @@ double compensate_slack(double Output, bool A)
 	// ensure output remains within bounds of the motor sets
 	Output = constrain(Output, BALANCE_PID_MIN, BALANCE_PID_MAX);
 	return Output;
+}
+long mapfloat(long x, long in_min, long in_max, long out_min, long out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
