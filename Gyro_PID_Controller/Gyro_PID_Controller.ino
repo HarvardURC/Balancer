@@ -199,14 +199,19 @@ void loop()
 			//double output1 = compensate_slack(output, 1); //M1
 			//double output2 = compensate_slack(output, 0); //M2
 		//	Serial.println(y_val);
-			if (y_val > 0)
+			if (y_val > 0.7)
 			{
-				md.setM1Speed(-output + y_val ); //26.5
-				md.setM2Speed(output ); // 25
+				md.setM1Speed(-(-output - y_val) ); //26.5
+				md.setM2Speed(output + y_val ); // 25
 			}
-			else 
+			else if (y_val < -0.7)
 			{
 				md.setM1Speed(-output + y_val ); //26.5
+				md.setM2Speed(-(output - y_val) ); // 25
+			}
+			else
+			{
+				md.setM1Speed(-output);
 				md.setM2Speed(output ); // 25
 			}
 		
