@@ -16,7 +16,8 @@ int VRx = A0;
 int VRy = A1;
 int x_pos, y_pos, past_x_pos, past_y_pos, button_state, past_button;
 int button_pin = 7;
-
+float straight;
+float pivot_turn;
 struct payload_t
 {
 	float x_val;
@@ -30,7 +31,7 @@ void setup()
 	Serial.setTimeout(10);
 	// radio setup
  	radio.begin();
-  	radio.setRetries(2, 5); // delay of 15ms, 10 retries
+  	radio.setRetries(4, 5); // delay of 15ms, 10 retries
   	radio.openReadingPipe(1, pipe);
   	radio.startListening(); 
   	radio.printDetails();  
@@ -63,19 +64,23 @@ void listen_()
 	}
 }
 
-
 void transmit()
 {
 	payload_t payload;
 
-	float straight = analogRead(A0);
-	float pivot_turn = analogRead(A1);
+	float new_straight = analogRead(A0);
+	float new_pivot_turn = analogRead(A1);
+	new_straight = mapfloat(new_straight, 1023, 0,-11, 7);
+	new_pivot_turn = mapfloat(new_pivot_turn, 1023, 0, -25, 25);
 
+	if ( (new_straight != straight) || new_pivot_turn != pivot_turn)
+	{
+		
 		//Serial.println(value);
-	straight = mapfloat(straight, 1023, 0,-11, 7);
-	pivot_turn = mapfloat(pivot_turn, 1023, 0, -25, 25);
-	payload.x_val = straight;
-	payload.y_val = pivot_turn;
+		straight = mapfloat(straight, 1023, 0,-11, 7);
+		pivot_turn = mapfloat(pivot_turn, 1023, 0, -25, 25);
+		payload.x_val = straight;
+		payload.y_val = pivot_turn;
         // can't listen while writing 
         radio.stopListening(); 
         radio.openWritingPipe(pipe);
@@ -85,6 +90,8 @@ void transmit()
         // begin listening again
         radio.startListening();
         // not spamming comms
+        delay(10);
+	}
 }
 
 long mapfloat(long x, long in_min, long in_max, long out_min, long out_max)

@@ -13,7 +13,7 @@
 
 // http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
 // radio variables
-RF24 radio(3, 5);
+RF24 radio(5, 3);
 const uint64_t pipe = 0xF0F0F0F0AA;
 
 
@@ -60,15 +60,36 @@ double output, pitch, setPoint, send_pitch;
 //float kD = 0.5;
 
 
-float kP = 10;   // crrent best @ setpoint 0.3
-float kI = 0.0;
-float kD = 0.48;
+//float kP = 10;   // crrent best @ setpoint 0.3
+//float kI = 0.0;
+//float kD = 0.48;
 
-// -----------------------------------------
+//---------------------new thumper
+//float kP = 8.1;
+//float kI = 0.0;
+//float kD = 0.15;
 
-//float kP = 10.9;   // crrent best @ setpoint 0.1, with heigher base
-//float kI = 0.01;
+//float kP = 9.3;
+//float kI = 0.0;
 //float kD = 0.4;
+
+//float kP = 7.0;
+//float kI = 0.0;
+//float kD = 0.3;
+
+//float kP = 9.0;
+//float kI = 0.0;
+//float kD = 0.35;
+
+//float kP = 9.6;
+//float kI = 0.0;
+//float kD = 0.38;
+
+float kP = 5.6;
+float kI = 0.0;
+float kD = 0.;
+// ----------------
+// -----------------------------------------
 
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
 
@@ -87,11 +108,6 @@ long previousMillis = 0;
 unsigned long currentMillis;
 long interval = 10;
 
-
-
-
-
-
 struct payload_t
 {
 	float x_val;
@@ -100,7 +116,7 @@ struct payload_t
 
 payload_t payload;
 
-float y_val;
+float y_val = 0;
 
 /**************************************************************************/
 /*
@@ -108,9 +124,11 @@ float y_val;
 */
 /**************************************************************************/
 
+
 void setup()
 {
 	Serial.begin(115200);  // serial for debug
+	Serial.setTimeout(10);
 
 	md.init();	// dualvnh lib for motor controller
 
@@ -128,7 +146,7 @@ void setup()
 	bno.setExtCrystalUse(true);
 
 	// our setpoint for the pid loop
-	setPoint = 0.35 ; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
+	setPoint = -2.3 ; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
 
 	// Arduino PID Library setups
 	pid.SetMode(AUTOMATIC);
@@ -137,26 +155,17 @@ void setup()
 
 	// radio setup
 	radio.begin();
-	radio.setRetries(1, 2); // delay of 1ms, 2 retries
+	radio.setRetries(2, 3); // delay of 2ms, 3 retries
 	radio.openReadingPipe(1, pipe);
 	radio.startListening();
-	radio.printDetails();
-
+	Serial.println("BEGIN"); 
 }
+// get new gyro data
+
 
 void loop()
 {
-	currentMillis = millis();	// get system time
-
-	// make sure we only compute pid and set motors at correct interval (our cycle is 10 ms)
-	// see: https://learn.adafruit.com/multi-tasking-the-arduino-part-1/using-millis-for-timing
-
-	if (currentMillis - previousMillis >= interval)
-	{
-		previousMillis = currentMillis;
-
-		// get new gyro data
-		imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+	imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
 		// get the z orientation
 		pitch = euler.y();
@@ -178,20 +187,21 @@ void loop()
 		//	Serial.println(y_val);
 			if (y_val > 0)
 			{
-				md.setM1Speed(output + y_val ); //26.5
-				md.setM2Speed(-output ); // 25
+				md.setM1Speed(-output + y_val ); //26.5
+				md.setM2Speed(output ); // 25
 			}
 			else 
 			{
-				md.setM1Speed(output + y_val ); //26.5
-				md.setM2Speed(-output ); // 25
+				md.setM1Speed(-output + y_val ); //26.5
+				md.setM2Speed(output ); // 25
 			}
 		
 		}
-	}
 
 	listen_();
-	transmit();
+	//transmit();
+	//	radio.printDetails();
+
 	Serial.println(pitch);
 	//Serial.println(setPoint);
 
@@ -201,42 +211,44 @@ void listen_()
 {
 	if (radio.available() )
 	{	
+		Serial.println("IN LISTEN");
+
      	radio.read(&payload, sizeof(payload_t));
 		// buffer to store payload
 		setPoint = (payload.x_val);
 		y_val = (payload.y_val);
-
 	}
 }
 
 void transmit()
 {
+	imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
-// for more detailed debug
-//	imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
-//	imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-//	imu::Vector<3> mag = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
-
-	//float temps[] = {accel.x(), accel.y(), accel.z(), gyro.x(), gyro.y(), gyro.z(), mag.x(), mag.y(), mag.z(), pitch, setPoint, output, kP, kI, kD};
-	// can't listen while writing
-	radio.stopListening();
-	radio.openWritingPipe(pipe);
-
-	payload_t payload;
-	payload.x_val = pitch;
-
-	//char buff[transmit_buffer];              
-	//dtostrf(pitch, 5, 3, buff);
-	//radio.write(buff,transmit_buffer);
-	//memcpy(payload.x_val, buff, transmit_buffer );
-
-
-	radio.openReadingPipe(1,pipe);
-	radio.write(&payload, sizeof(payload_t));
-
-	// begin listening again
-	radio.startListening();
+	float new_pitch = euler.y();
+	if (new_pitch != pitch)
+	{
+		// can't listen while writing
+		radio.stopListening();
+		radio.openWritingPipe(pipe);
+	
+		payload_t payload2;
+		payload2.x_val = pitch;
+		payload2.y_val = 0.0;
+	
+		//char buff[transmit_buffer];              
+		//dtostrf(pitch, 5, 3, buff);
+		//radio.write(buff,transmit_buffer);
+		//memcpy(payload.x_val, buff, transmit_buffer );
+	
+		radio.write(&payload2, sizeof(payload_t));
+	
+		radio.openReadingPipe(1,pipe);
+	
+		// begin listening again
+		radio.startListening();
+	}
 }
+
 
 
 /*CREDIT ManpreetSingh80 on Github
