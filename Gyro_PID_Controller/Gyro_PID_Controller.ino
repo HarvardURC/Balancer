@@ -13,7 +13,7 @@
 
 // http://maniacbug.github.io/RF24/classRF24.html#a391eb0016877ec7486936795aed3b5ee
 // radio variables
-RF24 radio(5, 3);
+RF24 radio(3, 5);
 const uint64_t pipe = 0xF0F0F0F0AA;
 
 
@@ -85,9 +85,9 @@ double output, pitch, setPoint, send_pitch;
 //float kI = 0.0;
 //float kD = 0.38;
 
-float kP = 5.6;
+float kP = 9.6;
 float kI = 0.0;
-float kD = 0.;
+float kD = 0.38;
 // ----------------
 // -----------------------------------------
 

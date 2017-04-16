@@ -68,15 +68,9 @@ void transmit()
 {
 	payload_t payload;
 
-	float new_straight = analogRead(A0);
-	float new_pivot_turn = analogRead(A1);
-	new_straight = mapfloat(new_straight, 1023, 0,-11, 7);
-	new_pivot_turn = mapfloat(new_pivot_turn, 1023, 0, -25, 25);
+	float straight = analogRead(A0);
+	float pivot_turn = analogRead(A1);
 
-	if ( (new_straight != straight) || new_pivot_turn != pivot_turn)
-	{
-		
-		//Serial.println(value);
 		straight = mapfloat(straight, 1023, 0,-11, 7);
 		pivot_turn = mapfloat(pivot_turn, 1023, 0, -25, 25);
 		payload.x_val = straight;
@@ -91,7 +85,6 @@ void transmit()
         radio.startListening();
         // not spamming comms
         delay(10);
-	}
 }
 
 long mapfloat(long x, long in_min, long in_max, long out_min, long out_max)
