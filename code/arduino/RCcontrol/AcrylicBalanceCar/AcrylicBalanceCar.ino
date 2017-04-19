@@ -10,17 +10,35 @@
 //#include <EEPROM.h>
 //#include "music.h"
 //#include "MyEEprom.h"
-
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <SSD1306_text.h>
+#include "DualVNH5019MotorShield.h"
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+#include <utility/imumaths.h>
+#include <PID_v1.h>
 //#include <PinChangeInt.h> // for RC reciver
 
 //#define RESTRICT_PITCH // Comment out to restrict roll to ±90deg instead - please read: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf
 //#define USEEEPROM     //uncomment to use eeprom for storing PID parameters 
 //#define RCWork true
+#define BNO055_SAMPLERATE_DELAY_MS (10) //maybe lower this
+#define OLED_RESET 1
+SSD1306_text display(OLED_RESET);
+
+Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x29);
+
+// normal constructor call:
+// Adafruit_BNO055 bno = Adafruit_BNO055();
+
+DualVNH5019MotorShield md;
+
 
 //Rc receiver   //2 channels
 #define UP_DOWN_IN_PIN   16
 #define  LEFT_RIGHT_IN_PIN  17
-#define  AUX_IN_PIN 14  //is it use RC ,high level :no
 bool RCWork = false;
 
 volatile uint8_t bUpdateFlagsRC = 0;
@@ -36,11 +54,6 @@ volatile uint16_t LeftRightEnd = 0;
 int UpDownIn;
 int LeftRightIn;
 
-
- //Speaker Mode
- #define SPK_OFF  0x00
- #define SPK_ON  0x01
- #define SPK_ALARM 0x02 
 
 Kalman kalmanX; // Create the Kalman instances
 Kalman kalmanY;
@@ -91,25 +104,15 @@ int Speed_Diff,Speed_Diff_ALL;
 uint32_t LEDTimer;
 bool blinkState = false;
 
-uint32_t calTimer;
-uint32_t delayTimer;
-uint32_t  lampTimer;
 
 
-byte speakMode;
-
-//Music play
-int tonelength;
-int tonePin=13;
-int tonecnt = 0;
-uint32_t  BuzzerTimer;
 
 void setup() {
   Serial.begin(9600);
   Init();  
   //mySerial.begin(9600);
   Wire.begin();
-  Wire.setClock(400000); //TWBR = ((F_CPU / 400000L) - 16) / 2; // Set I2C frequency to 400kHz
+  // no need for this bc of library? ? Wire.setClock(400000); //TWBR = ((F_CPU / 400000L) - 16) / 2; // Set I2C frequency to 400kHz
 
   i2cData[0] = 7; // Set the sample rate to 1000Hz - 8kHz/(7+1) = 1000Hz
   i2cData[1] = 0x00; // Disable FSYNC and set 260 Hz Acc filtering, 256 Hz Gyro filtering, 8 KHz sampling
@@ -150,7 +153,7 @@ void setup() {
   gyroYangle = pitch;
   compAngleX = roll;
   compAngleY = pitch;
- 
+
  /* 
   if( analogRead(AUX_IN_PIN) > 1000)
   {
@@ -161,7 +164,6 @@ void setup() {
      RCWork = false;
   }
  */
- 
   // using the PinChangeInt library, attach the interrupts
   // used to read the channels
   Serial.print("RCWork: "); Serial.println(RCWork);
@@ -174,12 +176,7 @@ void setup() {
   attachInterrupt(SPD_INT_R, Encoder_R,FALLING);
   
   timer = micros();
-  LEDTimer = millis();
-  lampTimer = millis();
   
- // tonelength = sizeof(tune)/sizeof(tune[0]);
-  
- 
 }
 
 void loop() {
@@ -188,12 +185,10 @@ void loop() {
   double AngleAvg = 0;
 
   DataAvg[0]=0; DataAvg[1]=0; DataAvg[2]=0;
-       
     while(1)
     { //Serial.println("here");
       if(UpdateAttitude())
-      { 
-                                    
+      {                        
         DataAvg[2] = DataAvg[1];
         DataAvg[1] = DataAvg[0];
         DataAvg[0] = Angle_Car;
@@ -206,15 +201,12 @@ void loop() {
       UserComunication();
        ProcessRC();  
     }
-  
-
 }
 
 bool StopFlag = true;
 
 void PWM_Calculate()
-{  
-  
+{    
   float ftmp = 0;
   ftmp = (Speed_L + Speed_R) * 0.5;
   if( ftmp > 0)
@@ -304,13 +296,7 @@ void Car_Control()
   // Serial.print(pwm_l);  Serial.print("\t"); Serial.println(pwm_r);
   analogWrite(PWM_L, pwm_l>255? 255:pwm_l);
   analogWrite(PWM_R, pwm_r>255? 255:pwm_r);
-  
-  /*
-  Serial.println("pwm:"); Serial.print(pwm);
-  Serial.print("\t");
-  Serial.print("pwm_L:"); Serial.print(pwm_l);
-  Serial.print("pwm_R:"); Serial.print(pwm_r);
- */ 
+
 }
 
 
@@ -443,7 +429,6 @@ void Init()
   pinMode(DIR_R1, OUTPUT);//
   pinMode(DIR_R2, OUTPUT); 
 
-  pinMode(AUX_IN_PIN,INPUT);
   pinMode(UP_DOWN_IN_PIN, INPUT);//
   pinMode(LEFT_RIGHT_IN_PIN, INPUT);//
   //init variables
