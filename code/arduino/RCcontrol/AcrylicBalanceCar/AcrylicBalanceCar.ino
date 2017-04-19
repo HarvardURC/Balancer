@@ -37,9 +37,9 @@ DualVNH5019MotorShield md;
 
 
 //Rc receiver   //2 channels
-#define UP_DOWN_IN_PIN   16
-#define  LEFT_RIGHT_IN_PIN  17
-bool RCWork = false;
+#define UP_DOWN_IN_PIN   3   //maybe flip these 2
+#define  LEFT_RIGHT_IN_PIN  5
+//bool RCWork = false;
 
 volatile uint8_t bUpdateFlagsRC = 0;
 #define UP_DOWN_FLAG   0b10
@@ -74,17 +74,11 @@ uint8_t i2cData[14]; // Buffer for I2C data
 #define BUZZER 13
 #define LED 13
 //motor  define
-#define PWM_L 6  //M1
-#define PWM_R 5   //M2
-#define DIR_L1 8
-#define DIR_L2 7
-#define DIR_R1 3
-#define DIR_R2 4
 //encoder define
-#define SPD_INT_R 11   //interrupt 
-#define SPD_PUL_R 12   
-#define SPD_INT_L 10   //interrupt 
-#define SPD_PUL_L 9   
+#define SPD_INT_R A3   //interrupt 
+#define SPD_PUL_R A4   
+#define SPD_INT_L A2   //interrupt 
+#define SPD_PUL_L A1   
 
 int Speed_L,Speed_R;
 int Position_AVG;
@@ -105,36 +99,45 @@ uint32_t LEDTimer;
 bool blinkState = false;
 
 
-
-
 void setup() {
   Serial.begin(9600);
   Init();  
   //mySerial.begin(9600);
   Wire.begin();
+    display.init();
+    display.clear();
   // no need for this bc of library? ? Wire.setClock(400000); //TWBR = ((F_CPU / 400000L) - 16) / 2; // Set I2C frequency to 400kHz
 
-  i2cData[0] = 7; // Set the sample rate to 1000Hz - 8kHz/(7+1) = 1000Hz
-  i2cData[1] = 0x00; // Disable FSYNC and set 260 Hz Acc filtering, 256 Hz Gyro filtering, 8 KHz sampling
-  i2cData[2] = 0x00; // Set Gyro Full Scale Range to ±250deg/s
-  i2cData[3] = 0x00; // Set Accelerometer Full Scale Range to ±2g
+ // i2cData[0] = 7; // Set the sample rate to 1000Hz - 8kHz/(7+1) = 1000Hz
+ // i2cData[1] = 0x00; // Disable FSYNC and set 260 Hz Acc filtering, 256 Hz Gyro filtering, 8 KHz sampling
+ // i2cData[2] = 0x00; // Set Gyro Full Scale Range to ±250deg/s
+  //i2cData[3] = 0x00; // Set Accelerometer Full Scale Range to ±2g
 
-  while (i2cWrite(0x19, i2cData, 4, false)); // Write to all four registers at once
-  while (i2cWrite(0x6B, 0x01, true)); // PLL with X axis gyroscope reference and disable sleep mode
+// while (i2cWrite(0x19, i2cData, 4, false)); // Write to all four registers at once
+ //while (i2cWrite(0x6B, 0x01, true)); // PLL with X axis gyroscope reference and disable sleep mode
 
-  while (i2cRead(0x75, i2cData, 1));
-  if (i2cData[0] != 0x68) { // Read "WHO_AM_I" register
-    Serial.print(F("Error reading sensor"));
-    while (1);
+  if(!bno.begin())
+  {
+    /* There was a problem detecting the BNO055 ... check your connections */
+    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    while(1);
   }
 
   delay(200); // Wait for sensor to stabilize
 
   /* Set kalman and gyro starting angle */
+  /*
   while (i2cRead(0x3B, i2cData, 6));
   accX = (i2cData[0] << 8) | i2cData[1];
   accY = (i2cData[2] << 8) | i2cData[3];
   accZ = (i2cData[4] << 8) | i2cData[5];
+  */
+    bno.setExtCrystalUse(true);
+    
+    imu::Vector<3> accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+  double accX = accelerometer.x();
+  double accY = accelerometer.y();
+  double accZ = accelerometer.z();
 
   // Source: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf eq. 25 and eq. 26
   // atan2 outputs the value of -π to π (radians) - see http://en.wikipedia.org/wiki/Atan2
@@ -153,7 +156,6 @@ void setup() {
   gyroYangle = pitch;
   compAngleX = roll;
   compAngleY = pitch;
-
  /* 
   if( analogRead(AUX_IN_PIN) > 1000)
   {
@@ -166,14 +168,14 @@ void setup() {
  */
   // using the PinChangeInt library, attach the interrupts
   // used to read the channels
-  Serial.print("RCWork: "); Serial.println(RCWork);
-  if(RCWork == true)
-  {
+//  Serial.print("RCWork: "); Serial.println(RCWork);
+ // if(RCWork == true)
+ // {
     attachInterrupt(UP_DOWN_IN_PIN, calcUpDown,CHANGE);
     attachInterrupt(LEFT_RIGHT_IN_PIN, calcLeftRight,CHANGE);
-  }
-  attachInterrupt(SPD_INT_L, Encoder_L,FALLING);
-  attachInterrupt(SPD_INT_R, Encoder_R,FALLING);
+ // }
+  attachInterrupt(SPD_INT_L, Encoder_L,CHANGE);
+  attachInterrupt(SPD_INT_R, Encoder_R,CHANGE);
   
   timer = micros();
   
@@ -198,8 +200,11 @@ void loop() {
           Car_Control();
         }
       }      
-      UserComunication();
+     // UserComunication();
        ProcessRC();  
+      display.setCursor(6,40);
+      display.setTextSize(2,1);
+      display.print(UpDownIn);
     }
 }
 
@@ -227,8 +232,8 @@ void PWM_Calculate()
   Position_Add += Speed_Need;  //
   
   Position_Add = constrain(Position_Add, -800, 800);
-//   Serial.print(Position_AVG_Filter);  Serial.print("\t"); Serial.println(Position_Add);
-//Serial.print((Angle_Car-2 + K_Base)* KA_P);  Serial.print("\t");
+   Serial.print(Position_AVG_Filter);  Serial.print("\t"); Serial.println(Position_Add);
+   Serial.print((Angle_Car-2 + K_Base)* KA_P);  Serial.print("\t");
   pwm =  (Angle_Car-5 + K_Base)* KA_P   //P
       + Gyro_Car * KA_D //D
       +  Position_Add * KP_I    //I
@@ -265,41 +270,47 @@ void Car_Control()
 {  
  if (pwm_l<0)
   {
-    digitalWrite(DIR_L1, HIGH);
+    md.setM1Speed(-pwm_l);
+   /* digitalWrite(DIR_L1, HIGH);
     digitalWrite(DIR_L2, LOW);
-    pwm_l =- pwm_l;  //cchange to positive
+    pwm_l =- pwm_l;  //cchange to positive */
   }
   else
   {
-    digitalWrite(DIR_L1, LOW);
-    digitalWrite(DIR_L2, HIGH);
+    md.setM1Speed(pwm_l);
+    //digitalWrite(DIR_L1, LOW);
+    //digitalWrite(DIR_L2, HIGH);
   }
   
   if (pwm_r<0)
   {
-    digitalWrite(DIR_R1, LOW);
-    digitalWrite(DIR_R2, HIGH);
-    pwm_r = -pwm_r;
+    md.setM2Speed(-pwm_r);
+    //digitalWrite(DIR_R1, LOW);
+    //digitalWrite(DIR_R2, HIGH);
+    //pwm_r = -pwm_r;
   }
   else
   {
-    digitalWrite(DIR_R1, HIGH);
-    digitalWrite(DIR_R2, LOW);
+    md.setM2Speed(pwm_r);
+    //digitalWrite(DIR_R1, HIGH);
+    //digitalWrite(DIR_R2, LOW);
   }
   if( Angle_Car > 45 || Angle_Car < -45 )
   {
-    pwm_l = 0;
-    pwm_r = 0;
+    md.setM1Speed(0);
+      md.setM2Speed(0);
+      //pwm_l = 0;
+    //pwm_r = 0;
   }
  // pwm_l = pwm_l;  //adjust Motor different
 //  pwm_r = pwm_r;
   // Serial.print(pwm_l);  Serial.print("\t"); Serial.println(pwm_r);
-  analogWrite(PWM_L, pwm_l>255? 255:pwm_l);
-  analogWrite(PWM_R, pwm_r>255? 255:pwm_r);
+  //analogWrite(PWM_L, pwm_l>255? 255:pwm_l);
+  //analogWrite(PWM_R, pwm_r>255? 255:pwm_r);
 
 }
 
-
+/*
 void UserComunication()
 {
   MySerialEvent();
@@ -312,13 +323,13 @@ void UserComunication()
       case 0x02: UpdatePID(); break;
       case 0x03: CarDirection();break;
       case 0x04: SendPID();break;
-      case 0x05:  /*
+      case 0x05:  // this was star / oringanlly
                   SavingData.KA_P = KA_P;
                   SavingData.KA_D = KA_D;
                   SavingData.KP_P = KP_P;
                   SavingData.KP_I = KP_I;
                   SavingData.K_Base = K_Base;
-                 // WritePIDintoEEPROM(&SavingData);*/
+                 // WritePIDintoEEPROM(&SavingData);  this was star / origianlly 
                   break;
       case 0x06:  break;
       case 0x07:break;
@@ -327,7 +338,8 @@ void UserComunication()
   }
   
 }
-
+*/
+/*
 void UpdatePID()
 {
   unsigned int Upper,Lower;
@@ -345,7 +357,8 @@ void UpdatePID()
     default:break;
   }
 }
-
+*/
+/*
 void CarDirection()
 {
   unsigned char Speed = SerialPacket.m_Buffer[1];
@@ -359,48 +372,8 @@ void CarDirection()
     default:break;
   }
 }
-
-void SendPID()
-{
-  static unsigned char cnt = 0;
-  unsigned char data[3];
-  switch(cnt)
-  {
-    case 0: 
-    data[0] = 0x01;
-    data[1] = int(KA_P*100)/256;
-    data[2] = int(KA_P*100)%256;
-    AssemblyAndSend(0x04,data);
-    cnt++;break;
-    case 1:
-     data[0] = 0x02;
-    data[1] = int(KA_D*100)/256;
-    data[2] = int(KA_D*100)%256;
-    AssemblyAndSend(0x04,data);
-    cnt++;break;  
-    case 2:
-    data[0] = 0x03;
-    data[1] = int(KP_P*100)/256;
-    data[2] = int(KP_P*100)%256;
-    AssemblyAndSend(0x04,data);
-    cnt++;break;    
-    case 3:
-    data[0] = 0x04;
-    data[1] = int(KP_I*100)/256;
-    data[2] = int(KP_I*100)%256;
-    AssemblyAndSend(0x04,data);
-    cnt++;break; 
-    case 4:
-    data[0] = 0x05;
-    data[1] = int(K_Base*100)/256;
-    data[2] = int(K_Base*100)%256;
-    AssemblyAndSend(0x04,data);
-    cnt = 0;break; 
-  default:break;  
-  }
-}
-
-
+*/
+/*
 
 void AssemblyAndSend(char type ,unsigned char *data)
 {
@@ -416,19 +389,19 @@ void AssemblyAndSend(char type ,unsigned char *data)
     Serial.write(sendbuff[i]);
   }
 }
-
+*/
 void Init()
 {
-  pinMode(BUZZER, OUTPUT);
-  pinMode(SPD_PUL_L, INPUT);//
-  pinMode(SPD_PUL_R, INPUT);//
-  pinMode(PWM_L, OUTPUT);//
+ // pinMode(BUZZER, OUTPUT);
+  pinMode(SPD_PUL_L, INPUT);
+  pinMode(SPD_PUL_R, INPUT);
+ /* pinMode(PWM_L, OUTPUT);//
   pinMode(PWM_R, OUTPUT);//
   pinMode(DIR_L1, OUTPUT);//
   pinMode(DIR_L2, OUTPUT);
   pinMode(DIR_R1, OUTPUT);//
   pinMode(DIR_R2, OUTPUT); 
-
+  */
   pinMode(UP_DOWN_IN_PIN, INPUT);//
   pinMode(LEFT_RIGHT_IN_PIN, INPUT);//
   //init variables
@@ -439,7 +412,6 @@ void Init()
   Position_Add = 0;
   pwm = 0;pwm_l = 0;pwm_r = 0;
   Speed_Diff = 0;Speed_Diff_ALL = 0;
-  
   KA_P = 25.0;
   KA_D = 3.5;
   KP_P = 30;
@@ -474,26 +446,26 @@ void Init()
 
 void Encoder_L()   //car up is positive car down  is negative
 {
-  if (digitalRead(SPD_PUL_L))
+  if (digitalRead(SPD_PUL_L)== digitalRead(SPD_INT_L))
     Speed_L += 1;
   else
     Speed_L -= 1;
- //  Serial.print("SPEED_L:    ");
-   // Serial.println(Speed_L);
+   Serial.print("SPEED_L:    ");
+    Serial.println(Speed_L);
 }
 
 void Encoder_R()    //car up is positive car down  is negative
 {
-  if (!digitalRead(SPD_PUL_R))
+  if (digitalRead(SPD_PUL_R)==digitalRead(SPD_INT_R))
     Speed_R += 1;
   else
     Speed_R -= 1;
-    
-  // Serial.print("SPEED_R:    ");
-   // Serial.println(Speed_R);
+   
+   Serial.print("SPEED_R:    ");
+    Serial.println(Speed_R);
 }
 
-
+/*
 void MySerialEvent()
 {
 	uchar c = '0';
@@ -517,20 +489,22 @@ void MySerialEvent()
           }
         }	
 }
-
+*/
 int UpdateAttitude()
 {
  if((micros() - timer) >= 10000) 
  {    //10ms 
   /* Update all the values */
-  while (i2cRead(0x3B, i2cData, 14));
-  accX = ((i2cData[0] << 8) | i2cData[1]);
-  accY = ((i2cData[2] << 8) | i2cData[3]);
-  accZ = ((i2cData[4] << 8) | i2cData[5]);
-  tempRaw = (i2cData[6] << 8) | i2cData[7];
-  gyroX = (i2cData[8] << 8) | i2cData[9];
-  gyroY = (i2cData[10] << 8) | i2cData[11];
-  gyroZ = (i2cData[12] << 8) | i2cData[13];
+  imu::Vector<3> accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+  imu::Vector<3> gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+
+  accX = accelerometer.x();
+  accY = accelerometer.y();
+  accZ = accelerometer.z();
+ 
+  gyroX = gyroscope.x();
+  gyroY = gyroscope.y();
+  gyroZ = gyroscope.z();
 
   double dt = (double)(micros() - timer) / 1000000; // Calculate delta time
   timer = micros();
@@ -546,7 +520,7 @@ int UpdateAttitude()
   double pitch = atan2(-accX, accZ) * RAD_TO_DEG;
 #endif
 
-  double gyroXrate = gyroX / 131.0; // Convert to deg/s
+  double gyroXrate = gyroX / 131.0; // Convert to deg/s   maybe this is wrong
   double gyroYrate = gyroY / 131.0; // Convert to deg/s
 
 #ifdef RESTRICT_PITCH
@@ -628,7 +602,7 @@ int UpdateAttitude()
   
   Angle_Car = kalAngleX;   //negative backward  positive forward
   Gyro_Car = gyroXrate;
- //Serial.print(Angle_Car);Serial.print("\t");Serial.println(Gyro_Car);
+ Serial.print(Angle_Car);Serial.print("\t");Serial.println(Gyro_Car);
 
    return 1;
  }
