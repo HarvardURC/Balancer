@@ -171,8 +171,8 @@ void setup() {
 //  Serial.print("RCWork: "); Serial.println(RCWork);
  // if(RCWork == true)
  // {
-    attachInterrupt(UP_DOWN_IN_PIN, calcUpDown,CHANGE);
-    attachInterrupt(LEFT_RIGHT_IN_PIN, calcLeftRight,CHANGE);
+    attachInterrupt(UP_DOWN_IN_PIN, calcUpDown, CHANGE);
+    attachInterrupt(LEFT_RIGHT_IN_PIN, calcLeftRight, CHANGE);
  // }
   attachInterrupt(SPD_INT_L, Encoder_L,CHANGE);
   attachInterrupt(SPD_INT_R, Encoder_R,CHANGE);
@@ -412,11 +412,11 @@ void Init()
   Position_Add = 0;
   pwm = 0; pwm_l = 0; pwm_r = 0;
   Speed_Diff = 0;Speed_Diff_ALL = 0;
-  KA_P = 9.0; //25.0
-  KA_D = 0;//3.5;
+  KA_P = 9;//25.0;
+  KA_D = 0;3.5;
   KP_P = 0;//30;
   KP_I = 0;//0.34;
-  K_Base = 0;//6.7;
+  K_Base = 6.7;
   /*
  ReadingData.KA_P = KA_P;
  ReadingData.KA_D = KA_D;
@@ -551,8 +551,8 @@ int UpdateAttitude()
   kalAngleX = kalmanX.getAngle(roll, gyroXrate, dt); // Calculate the angle using a Kalman filter
 #endif
 
- // gyroXangle += gyroXrate * dt; // Calculate gyro angle without any filter
- // gyroYangle += gyroYrate * dt;
+  gyroXangle += gyroXrate * dt; // Calculate gyro angle without any filter
+  gyroYangle += gyroYrate * dt;
   //gyroXangle += kalmanX.getRate() * dt; // Calculate gyro angle using the unbiased rate
   //gyroYangle += kalmanY.getRate() * dt;
 
@@ -564,7 +564,9 @@ int UpdateAttitude()
     gyroXangle = kalAngleX;
   if (gyroYangle < -180 || gyroYangle > 180)
     gyroYangle = kalAngleY;
-
+      display.setTextSize(2,1);
+       display.setCursor(4,40);
+          display.print(gyroYangle);
   /* Print Data */
 #if 0 // Set to 1 to activate
   Serial.print(accX); Serial.print("\t");
@@ -597,7 +599,7 @@ Serial.print("roll:    ");   Serial.print(roll); Serial.print("\t");
   //Serial.print("\r\n");
   
   Angle_Car = kalAngleY;   //negative backward  positive forward
-  Gyro_Car = gyroXrate;
+  Gyro_Car = gyroYrate;    //both here were origanly x instead of Y ------------------
  //Serial.print(Angle_Car);Serial.print("\t");Serial.println(Gyro_Car);
 
    return 1;
