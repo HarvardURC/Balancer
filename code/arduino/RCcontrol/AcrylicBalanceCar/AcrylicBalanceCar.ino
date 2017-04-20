@@ -37,8 +37,8 @@ DualVNH5019MotorShield md;
 
 
 //Rc receiver   //2 channels
-#define UP_DOWN_IN_PIN   5   //maybe flip these 2
-#define  LEFT_RIGHT_IN_PIN  3
+#define UP_DOWN_IN_PIN   A5  //maybe flip these 2
+#define  LEFT_RIGHT_IN_PIN  A0
 //bool RCWork = false;
 
 volatile uint8_t bUpdateFlagsRC = 0;
@@ -232,8 +232,8 @@ void PWM_Calculate()
   Position_Add += Speed_Need;  //
   
   Position_Add = constrain(Position_Add, -800, 800);
-   Serial.print(Position_AVG_Filter);  Serial.print("\t"); Serial.println(Position_Add);
-   Serial.print((Angle_Car-2 + K_Base)* KA_P);  Serial.print("\t");
+ //  Serial.print(Position_AVG_Filter);  Serial.print("\t"); Serial.println(Position_Add);
+  // Serial.print((Angle_Car-2 + K_Base)* KA_P);  Serial.print("\t");
   pwm =  (Angle_Car-5 + K_Base)* KA_P   //P
       + Gyro_Car * KA_D //D
       +  Position_Add * KP_I    //I
@@ -270,7 +270,7 @@ void Car_Control()
 {  
  if (pwm_l<0)
   {
-    md.setM1Speed(-pwm_l);
+    md.setM1Speed(pwm_l);
    /* digitalWrite(DIR_L1, HIGH);
     digitalWrite(DIR_L2, LOW);
     pwm_l =- pwm_l;  //cchange to positive */
@@ -291,7 +291,7 @@ void Car_Control()
   }
   else
   {
-    md.setM2Speed(-pwm_r);
+    md.setM2Speed(pwm_r);
     //digitalWrite(DIR_R1, HIGH);
     //digitalWrite(DIR_R2, LOW);
   }
@@ -412,11 +412,11 @@ void Init()
   Position_Add = 0;
   pwm = 0; pwm_l = 0; pwm_r = 0;
   Speed_Diff = 0;Speed_Diff_ALL = 0;
-  KA_P = 25.0;
+  KA_P = 9.0; //25.0
   KA_D = 0;//3.5;
   KP_P = 0;//30;
   KP_I = 0;//0.34;
-  K_Base = 6.7;
+  K_Base = 0;//6.7;
   /*
  ReadingData.KA_P = KA_P;
  ReadingData.KA_D = KA_D;
@@ -578,7 +578,7 @@ int UpdateAttitude()
   Serial.print("\t");
 #endif
 
-#if 1
+#if 0
 Serial.print("roll:    ");   Serial.print(roll); Serial.print("\t");
  // Serial.print(gyroXangle); Serial.print("\t");
  // Serial.print(compAngleX); Serial.print("\t");
@@ -589,15 +589,9 @@ Serial.print("roll:    ");   Serial.print(roll); Serial.print("\t");
  Serial.print("pitch:  ");    Serial.print(pitch); Serial.print("\t");
  // Serial.print(gyroYangle); Serial.print("\t");
  // Serial.print(compAngleY); Serial.print("\t");
-  Serial.print("updownin:    "); Serial.print(LeftRightIn); Serial.print("\t");
-
+  Serial.print("UpDownIn:    "); Serial.print(UpDownIn); Serial.print("\t");
+  Serial.print("LeftRightIn:    "); Serial.print(LeftRightIn); Serial.print("\t");
   Serial.print("pwm l: "); Serial.print(pwm_l); Serial.print("pwm r"); Serial.println(pwm_r);
-#endif
-#if 0 // Set to 1 to print the temperature
-  Serial.print("\t");
-
-  double temperature = (double)tempRaw / 340.0 + 36.53;
-  Serial.print(temperature); Serial.print("\t");
 #endif
 
   //Serial.print("\r\n");
@@ -618,6 +612,7 @@ Serial.print("roll:    ");   Serial.print(roll); Serial.print("\t");
 void calcUpDown()
 {
  // Serial.println("in up down here");
+  //pulseIn(UP_DOWN_IN_PIN,HIGH);
   if(digitalRead(UP_DOWN_IN_PIN) == HIGH)
   {
     UpDownStart = micros();
@@ -627,6 +622,7 @@ void calcUpDown()
     UpDownEnd = (uint16_t)(micros() - UpDownStart);
     bUpdateFlagsRC |= UP_DOWN_FLAG;
   }
+  //bUpdateFlagsRC |= UP_DOWN_FLAG;
 }
 
 void calcLeftRight()
@@ -655,7 +651,7 @@ void ProcessRC()
 
     if(bUpdateFlagsRC & UP_DOWN_FLAG)
     {
-      UpDownIn = UpDownEnd;
+      UpDownIn = 1500;  // TODO Change back to    UpDownIn = UpDownEnd; 
       if( abs(UpDownIn - 1500) > RC_ERROR ) 
       {
         if(UpDownIn > 1500) // car up
@@ -672,7 +668,7 @@ void ProcessRC()
    
     if(bUpdateFlagsRC & LEFT_RIGHT_FLAG)
     {
-      LeftRightIn = LeftRightEnd;
+      LeftRightIn = 1500; // TODO change BACK TO LeftRightIn = LeftRightEnd; 
       if( abs(LeftRightIn - 1500) > RC_ERROR)
       {
       //  RCTurnSpeed = 100;//map(ThrottleIn,1000,2000,0,200);
