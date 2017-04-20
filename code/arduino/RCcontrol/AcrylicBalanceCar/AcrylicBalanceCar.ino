@@ -37,8 +37,8 @@ DualVNH5019MotorShield md;
 
 
 //Rc receiver   //2 channels
-#define UP_DOWN_IN_PIN   3   //maybe flip these 2
-#define  LEFT_RIGHT_IN_PIN  5
+#define UP_DOWN_IN_PIN   5   //maybe flip these 2
+#define  LEFT_RIGHT_IN_PIN  3
 //bool RCWork = false;
 
 volatile uint8_t bUpdateFlagsRC = 0;
@@ -204,7 +204,7 @@ void loop() {
        ProcessRC();  
       display.setCursor(6,40);
       display.setTextSize(2,1);
-      display.print(UpDownIn);
+      display.print(pwm_l);
     }
 }
 
@@ -284,14 +284,14 @@ void Car_Control()
   
   if (pwm_r<0)
   {
-    md.setM2Speed(-pwm_r);
+    md.setM2Speed(pwm_r);
     //digitalWrite(DIR_R1, LOW);
     //digitalWrite(DIR_R2, HIGH);
     //pwm_r = -pwm_r;
   }
   else
   {
-    md.setM2Speed(pwm_r);
+    md.setM2Speed(-pwm_r);
     //digitalWrite(DIR_R1, HIGH);
     //digitalWrite(DIR_R2, LOW);
   }
@@ -410,12 +410,12 @@ void Init()
   Position_AVG = 0;
   Position_AVG_Filter = 0;
   Position_Add = 0;
-  pwm = 0;pwm_l = 0;pwm_r = 0;
+  pwm = 0; pwm_l = 0; pwm_r = 0;
   Speed_Diff = 0;Speed_Diff_ALL = 0;
   KA_P = 25.0;
-  KA_D = 3.5;
-  KP_P = 30;
-  KP_I = 0.34;
+  KA_D = 0;//3.5;
+  KP_P = 0;//30;
+  KP_I = 0;//0.34;
   K_Base = 6.7;
   /*
  ReadingData.KA_P = KA_P;
@@ -450,8 +450,8 @@ void Encoder_L()   //car up is positive car down  is negative
     Speed_L += 1;
   else
     Speed_L -= 1;
-   Serial.print("SPEED_L:    ");
-    Serial.println(Speed_L);
+   //Serial.print("SPEED_L:    ");
+    //Serial.println(Speed_L);
 }
 
 void Encoder_R()    //car up is positive car down  is negative
@@ -461,8 +461,8 @@ void Encoder_R()    //car up is positive car down  is negative
   else
     Speed_R -= 1;
    
-   Serial.print("SPEED_R:    ");
-    Serial.println(Speed_R);
+   //Serial.print("SPEED_R:    ");
+   // Serial.println(Speed_R);
 }
 
 /*
@@ -578,18 +578,20 @@ int UpdateAttitude()
   Serial.print("\t");
 #endif
 
-#if 0
-  Serial.print(roll); Serial.print("\t");
+#if 1
+Serial.print("roll:    ");   Serial.print(roll); Serial.print("\t");
  // Serial.print(gyroXangle); Serial.print("\t");
  // Serial.print(compAngleX); Serial.print("\t");
-  Serial.print(kalAngleX); Serial.print("\t");
+ Serial.print("kaanglex:    ");    Serial.print(kalAngleX); Serial.print("\t");
 
   Serial.print("\t");
 
-  Serial.print(pitch); Serial.print("\t");
+ Serial.print("pitch:  ");    Serial.print(pitch); Serial.print("\t");
  // Serial.print(gyroYangle); Serial.print("\t");
  // Serial.print(compAngleY); Serial.print("\t");
-  Serial.print(kalAngleY); Serial.println("\t");
+  Serial.print("updownin:    "); Serial.print(LeftRightIn); Serial.print("\t");
+
+  Serial.print("pwm l: "); Serial.print(pwm_l); Serial.print("pwm r"); Serial.println(pwm_r);
 #endif
 #if 0 // Set to 1 to print the temperature
   Serial.print("\t");
@@ -600,9 +602,9 @@ int UpdateAttitude()
 
   //Serial.print("\r\n");
   
-  Angle_Car = kalAngleX;   //negative backward  positive forward
+  Angle_Car = kalAngleY;   //negative backward  positive forward
   Gyro_Car = gyroXrate;
- Serial.print(Angle_Car);Serial.print("\t");Serial.println(Gyro_Car);
+ //Serial.print(Angle_Car);Serial.print("\t");Serial.println(Gyro_Car);
 
    return 1;
  }
