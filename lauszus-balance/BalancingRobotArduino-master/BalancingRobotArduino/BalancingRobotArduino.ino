@@ -21,17 +21,17 @@ Kalman kalman; // See https://github.com/TKJElectronics/KalmanFilter for source 
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 #define BNO055_SAMPLERATE_DELAY_MS (10) //maybe lower this
+Adafruit_BNO055 bno = Adafruit_BNO055();
+
 #define OLED_RESET 1
 SSD1306_text display(OLED_RESET);
 
-Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x29);
 
 DualVNH5019MotorShield md;
 
-    imu::Vector<3> accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
-   imu::Vector<3> gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-#define UP_DOWN_IN_PIN   A5  //maybe flip these 2
-#define  LEFT_RIGHT_IN_PIN  A0
+
+#define UP_DOWN_IN_PIN   3  //maybe flip these 2
+#define  LEFT_RIGHT_IN_PIN  5
 
 //#include <SPP.h> // SS is rerouted to 8 and INT is rerouted to 7 - see http://www.circuitsathome.com/usb-host-shield-hardware-manual at "5. Interface modifications"
 //USB Usb;
@@ -41,14 +41,37 @@ DualVNH5019MotorShield md;
   double accY;
   double accZ;
   double gyroY;
+  int speed_1; // made global
 void setup() {
   /* Setup encoders */
+    Serial.begin(9600);
+  Wire.begin();
+    display.init();
+    display.clear();
+    delay(200);
+     display.setTextSize(2,1);
+    display.setCursor(4,40);
+    display.print("test");
+    delay(1000);
+    
   pinMode(leftEncoder1,INPUT);
   pinMode(leftEncoder2,INPUT);
   pinMode(rightEncoder1,INPUT);
   pinMode(rightEncoder2,INPUT); 
-  attachInterrupt(leftEncoder1,leftEncoder,RISING); // pin 2
-  attachInterrupt(rightEncoder1,rightEncoder,RISING); // pin 3
+  attachInterrupt(leftEncoder1,leftEncoder,CHANGE); // pin 2   //TODO both was RISING
+  attachInterrupt(rightEncoder1,rightEncoder,CHANGE); // pin 3
+  delay(200);
+ // Serial.println("Orientation Sensor Raw Data Test"); Serial.println("");
+  
+  if(!bno.begin())
+  {
+    /* There was a problem detecting the BNO055 ... check your connections */
+    //Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    while(1);
+  }
+ // Serial.println("BNO good"); Serial.println("");
+
+  delay(200); // Wait for sensor to stabilize
     bno.setExtCrystalUse(true);
     
     imu::Vector<3> accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
@@ -80,14 +103,12 @@ void setup() {
  // pinMode(buzzer,OUTPUT);  
 
   /* Setup IMU Inputs */
-  pinMode(gyroY,INPUT);
-  pinMode(accY,INPUT);
-  pinMode(accZ,INPUT);      
-
+ // pinMode(gyroY,INPUT);
+  //pinMode(accY,INPUT);
+  //pinMode(accZ,INPUT);      
 
   /* Calibrate the gyro and accelerometer relative to ground */
  // calibrateSensors();   TODO maybe add calibration??
-
   /* Setup timing */
   loopStartTime = micros();
   timer = loopStartTime;
@@ -95,16 +116,16 @@ void setup() {
 
 void loop() {
   /* Calculate pitch */    
-    imu::Vector<3> accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
-   imu::Vector<3> gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-
+   // imu::Vector<3> accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+   //imu::Vector<3> gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   accYangle = getAccY();
   gyroYrate = getGyroYrate();
   gyroAngle += gyroYrate*((double)(micros()-timer)/1000000);
   // See my guide for more info about calculation the angles and the Kalman filter: http://arduino.cc/forum/index.php/topic,58048.0.htm
-  pitch = kalman.getAngle(accYangle, gyroYrate, (double)(micros() - timer)/1000000); // Calculate the angle using a Kalman filter
+  pitch = euler.y()+180; //accYangle;//kalman.getAngle(accYangle, gyroYrate, (double)(micros() - timer)/1000000); // Calculate the angle using a Kalman filter
   timer = micros();  
-
+  Serial.print("pitch: "); Serial.println(pitch);
   /* Drive motors */
   // If the robot is laying down, it has to be put in a vertical position before it starts balancing
   // If it's already balancing it has to be ±45 degrees before it stops trying to balance
@@ -114,7 +135,7 @@ void loop() {
   } 
   else {
     layingDown = false; // It's no longer laying down
-    PID(targetAngle,targetOffset,turningOffset);        
+    PID2(targetAngle,targetOffset,turningOffset);        
   }
 
   /* Update wheel velocity every 100ms */
@@ -129,10 +150,8 @@ void loop() {
       stopped = true;
     }
   }
-
   /* Read the SPP connection */
  // readSPP();    
-  
  /* if(SerialBT.connected) {
     Usb.Task();
     if(sendPIDValues) {
@@ -176,7 +195,7 @@ void loop() {
   }
   loopStartTime = micros();    
 }
-void PID(double restAngle, double offset, double turning) {
+void PID2(double restAngle, double offset, double turning) {
   /* Steer robot */
   if (steerForward) {
     offset += (double)wheelVelocity/velocityScaleMove; // Scale down offset at high speed and scale up when reversing
@@ -208,7 +227,7 @@ void PID(double restAngle, double offset, double turning) {
   double dTerm = Kd * (error - lastError);
   lastError = error;
   double PIDValue = pTerm + iTerm + dTerm;
-
+  //Serial.print("PIDValue"); Serial.println(PIDValue);
   /* Steer robot sideways */
   double PIDLeft;
   double PIDRight;
@@ -310,6 +329,7 @@ void readSPP() {
     steer(stop);
 }
 */
+/*
 void steer(Command command) {
   // Set all false
   steerForward = false;
@@ -319,34 +339,34 @@ void steer(Command command) {
   steerRight = false;
   if(command == joystick) {    
     if(sppData2 > 0) {
-      targetOffset = scale(sppData2,0,1,0,7);        
+      targetOffset = scale2(sppData2,0,1,0,7);        
       steerForward = true;
     } else if(sppData2 < 0) {
-      targetOffset = scale(sppData2,0,-1,0,7);
+      targetOffset = scale2(sppData2,0,-1,0,7);
       steerBackward = true;
     } 
     if(sppData1 > 0) {
-      turningOffset = scale(sppData1,0,1,0,20);        
+      turningOffset = scale2(sppData1,0,1,0,20);        
       steerRight = true;
     } else if(sppData1 < 0) {
-      turningOffset = scale(sppData1,0,-1,0,20);
+      turningOffset = scale2(sppData1,0,-1,0,20);
       steerLeft = true;     
     }
   } else if(command == imu2) {
       if(sppData2 > 0) {
-        targetOffset = scale(sppData2,1,36,0,7);        
+        targetOffset = scale2(sppData2,1,36,0,7);        
         steerForward = true;
       }     
       else if(sppData2 < 0) {
-        targetOffset = scale(sppData2,-1,-36,0,7);
+        targetOffset = scale2(sppData2,-1,-36,0,7);
         steerBackward = true;
       }
       if(sppData1 > 0) {
-        turningOffset = scale(sppData1,1,45,0,20);        
+        turningOffset = scale2(sppData1,1,45,0,20);        
         steerLeft = true;
       }
       else if(sppData1 < 0) {
-        turningOffset = scale(sppData1,-1,-45,0,20);
+        turningOffset = scale2(sppData1,-1,-45,0,20);
         steerRight = true;     
       }
   }
@@ -359,8 +379,8 @@ void steer(Command command) {
     }
   }
   lastCommand = command;
-}
-double scale(double input, double inputMin, double inputMax, double outputMin, double outputMax) { // Like map() just returns a double
+} */
+double scale2(double input, double inputMin, double inputMax, double outputMin, double outputMax) { // Like map() just returns a double
   double output;
   if(inputMin < inputMax)
     output = (input-inputMin)/((inputMax-inputMin)/(outputMax-outputMin));              
@@ -380,27 +400,31 @@ void stopAndReset() {
   targetPosition = wheelPosition;
 }
 double getGyroYrate() {
+   imu::Vector<3> gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
    gyroY = gyroscope.y();
   // (gyroAdc-gyroZero)/Sensitivity (In quids) - Sensitivity = 0.00333/3.3*1023=1.0323
-  double gyroRate = -((double)((double)analogRead(gyroY) - zeroValues[0]) / 1.0323);
+  double gyroRate = -((double)((double)(gyroY) - zeroValues[0]) / 1.0323);
   return gyroRate;
 }
 double getAccY() {
-  accX = accelerometer.x();
+     imu::Vector<3> accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+
+  accX = accelerometer.x(); 
   accY = accelerometer.y();
   accZ = accelerometer.z();
-  double accYval = ((double)analogRead(accY) - zeroValues[1]);  
-  double accZval = ((double)analogRead(accZ) - zeroValues[2]);
+  double accXval = ((double)(accX) - zeroValues[0]);
+  double accYval = ((double)(accY) - zeroValues[1]);  
+  double accZval = ((double)(accZ) - zeroValues[2]);
   // Convert to 360 degrees resolution
   // atan2 outputs the value of -π to π (radians) - see http://en.wikipedia.org/wiki/Atan2
   // We are then convert it to 0 to 2π and then from radians to degrees
-  return (atan2(-accYval,-accZval)+PI)*RAD_TO_DEG;
+  return (atan2(-accXval,accZval)+PI)*RAD_TO_DEG;
 }
 void calibrateSensors() {
   for (uint8_t i = 0; i < 100; i++) { // Take the average of 100 readings
-    zeroValues[0] += analogRead(gyroY);
-    zeroValues[1] += analogRead(accY);
-    zeroValues[2] += analogRead(accZ);
+    zeroValues[0] += (gyroY);
+    zeroValues[1] += (accY);
+    zeroValues[2] += (accZ);
     delay(10);
   }
   zeroValues[0] /= 100; // Gyro X-axis
@@ -420,7 +444,8 @@ void calibrateSensors() {
 void moveMotor(Command motor, Command direction, double speedRaw) { // Speed is a value in percentage 0-100%
   if(speedRaw > 100)
     speedRaw = 100;
-  int speed_1 = speedRaw*((double)PWMVALUE)/100; // Scale from 100 to `
+   speed_1 = speedRaw*((double)PWMVALUE)/100; // Scale from 100 to `///
+   
   if (motor == left) {
    // setPWM(leftPWM,speed_1); // Left motor pwm
     if (direction == forward) {
@@ -437,12 +462,12 @@ void moveMotor(Command motor, Command direction, double speedRaw) { // Speed is 
   else if (motor == right) {
    // setPWM(rightPWM,speed); // Right motor pwm
     if (direction == forward) {
-      md.setM2Speed(-speed_1);
+      md.setM2Speed(speed_1);
      // cbi(rightPort,rightA);
      // sbi(rightPort,rightB);
     } 
     else if (direction == backward) {
-       md.setM2Speed(speed_1);
+       md.setM2Speed(-speed_1);
       //sbi(rightPort,rightA);
       //cbi(rightPort,rightB);
     }
@@ -457,17 +482,6 @@ void stopMotor(Command motor) {
   }
 }
 
-void setPWM(uint8_t pin, int dutyCycle) { // dutyCycle is a value between 0-ICR
-  /*if(pin == leftPWM) {
-    OCR1AH = (dutyCycle >> 8); 
-    OCR1AL = (dutyCycle & 0xFF);
-  } else if (pin == rightPWM) {
-    OCR1BH = (dutyCycle >> 8);
-    OCR1BL = (dutyCycle & 0xFF);    
-  } */
-                  // change this to be normal wtf 
-  analogWrite(pin, dutyCycle);
-}
 
 /* Interrupt routine and encoder read functions - I read using the port registers for faster processing */
 void leftEncoder() { 

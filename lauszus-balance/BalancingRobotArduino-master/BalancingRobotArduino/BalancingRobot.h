@@ -12,7 +12,7 @@ bool sendPIDValues;
 uint8_t dataCounter;
 
 #define PWM_FREQUENCY 20000 // The motor driver can handle a pwm frequency up to 20kHz
-#define PWMVALUE F_CPU/PWM_FREQUENCY/2 // Frequency is given by F_CPU/(2*N*ICR) - where N is the prescaler, we use no prescaling so frequency is given by F_CPU/(2*ICR) - ICR = F_CPU/PWM_FREQUENCY/2
+#define PWMVALUE 400//F_CPU/PWM_FREQUENCY/2 // Frequency is given by F_CPU/(2*N*ICR) - where N is the prescaler, we use no prescaling so frequency is given by F_CPU/(2*ICR) - ICR = F_CPU/PWM_FREQUENCY/2
 
 /* Used for the PS3 Communication and motor functions */
 int lastCommand; // This is used set a new targetPosition
@@ -29,8 +29,8 @@ enum Command {
 
 /* These are used to read and write to the port registers - see http://www.arduino.cc/en/Reference/PortManipulation 
  I do this to save processing power - see this page for more information: http://www.billporter.info/ready-set-oscillate-the-fastest-way-to-change-arduino-pins/ */
-#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))  // reading
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))  //writing 
+//#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))  // reading
+//#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))  //writing 
 
 /* Left motor */
 #ifdef PROMINI
@@ -49,14 +49,14 @@ enum Command {
 //#define leftPWM PINB1 // PB1 - pin 9 (OC1A) - (2PWM on the Pololu motor driver)
 
 /* Right motor */
-#define rightPort PORTC
+/*#define rightPort PORTC
 #define rightPortDirection DDRC
 #define rightPwmPortDirection DDRB
 
 #define rightA PINC4 // PC4 - pin A4 (1INA on the Pololu motor driver)
 #define rightB PINC5 // PC5 - pin A5 (1INB on the Pololu motor driver)
 #define rightPWM PINB2 // PB2 - pin 10 (OC1B) - (1PWM on the Pololu motor driver)
-
+*/
 /* 
   Note that the right motor is connected as so to the Pololu motor driver:
   Black wire - output 1A
@@ -86,9 +86,9 @@ double gyroAngle;
 double pitch;
 
 /* PID variables */
-double Kp = 7;
-double Ki = 2;
-double Kd = 8;
+double Kp = 7;//7;
+double Ki = 0;//2;
+double Kd = 0.0;//8;
 double targetAngle = 180;
 
 double lastError; // Store position error
@@ -97,7 +97,7 @@ double iTerm; // Store integral term
 /* Used for timing */
 unsigned long timer;
 
-#define STD_LOOP_TIME 10000 // Fixed time loop of 10 milliseconds
+#define STD_LOOP_TIME 10000 // Fixed time loop of 10 milliseconds todo was 10000
 unsigned long lastLoopUsefulTime = STD_LOOP_TIME;
 unsigned long loopStartTime;
 
