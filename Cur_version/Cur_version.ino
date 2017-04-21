@@ -68,10 +68,10 @@ double output, pitch, setPoint, send_pitch;
 // NEWEST BESTEST W/ R?C
 // 8-11 possible kp w/o slack
 // ?-? possible kpw/ slack
-float kP = 7.0;
+float kP = 6.9;
 float kI = 0;
-float kD = 0.10;
-float kPwheel = 2.5;
+float kD = 0.11;
+float kPwheel = 3.0;
 float kDwheel = 0;
 // ----------------
 // -----------------------------------------
@@ -102,8 +102,8 @@ bool stop_flag = false;
 */
 /**************************************************************************/
 
-#define center -500
-#define delta 3000
+#define center -1270
+#define delta 3500
 
 void setup()
 {
@@ -119,8 +119,8 @@ void setup()
 	pinMode(A5, OUTPUT);
 	digitalWrite(A5, HIGH);
 
-	attachInterrupt(Speed_L, Encoder_L,CHANGE);
- 	attachInterrupt(Speed_R, Encoder_R,CHANGE);
+	attachInterrupt(Speed_L, Encoder_L, CHANGE);
+ 	attachInterrupt(Speed_R, Encoder_R, CHANGE);
 
 
 	// OLED setup
@@ -166,8 +166,11 @@ void loop()
 	{
 		stop_flag = false;
 	}
-	
-	//Serial.println(right_stick);
+	int error = 20;
+	if(left_stick < left_stick + error && left_stick > left_stick - error)
+	{
+		left_stick = 1500;
+	}
 	left_stick = map(left_stick, 950, 2050, center - delta, center + delta);
 	setPoint = left_stick;
 	y_val = (map(right_stick, 950,2050,-15000.0, 15000));
@@ -176,18 +179,11 @@ void loop()
 
 	pid.SetTunings(kP, kI, kD);
 	
-	
-	//Serial.println(left_stick);
-//	Serial.println(map(left_stick, 950,2050,-20,20)); // ctr @ 0 and turning
-
-	//Serial.println(map(right_stick, 950,2050,-20,20)); // ctr @ 0 and turning
-
-    //Serial.println(ch1);
 	potVal = analogRead(potPin);
 //	kP = map(potVal, 0, 1023, 0, 10000);
 //	kP = kP / 1000.0;
-	kD = map(potVal, 0, 1023, -1000, 1000);
-	kD = kD / 1000.0;
+//	kD = map(potVal, 0, 1023, 0, 1000);
+//	kD = kD / 1000.0;
 //	setPoint = map(potVal, 0, 1023, -3000, 3000);
 //	setPoint = setPoint / 1000.0; 
 	imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
@@ -209,52 +205,33 @@ void loop()
 			// if we're supposed to be moving, factor in the wheel constants
 			if (!stop_flag)
 			{
-				Serial.print("MOVING:    ");
-				Serial.println(output);
 				output = output + (kPwheel * Speed_L) + (kDwheel * (Speed_L - last_count));
 			}
 			last_count = Speed_L;
 		//	Serial.println(y_val);
 /*			if (y_val > 0.4)
 			{
-				Serial.print("y_val > 0.4");
-				Serial.print(y_val);
 				//double output1 = compensate_slack((-output - y_val), 1); //M1
 				md.setM1Speed(-output); //26.5
 				md.setM2Speed(-output - 25); // 25
-							            display.setCursor(3,40);
-                 display.print(output1,3);
-                  display.setCursor(6,40);
-                  display.print(0,3);
 			}
 			else if (y_val < -0.8)
 			{
-				Serial.println("y_val < 0.4");
-
 				//double output2 = compensate_slack( (output - y_val), 0); //M2
 				md.setM1Speed(-output - 25); //26.5
 				md.setM2Speed(-output); // 25
-							            display.setCursor(3,40);
-                  display.print(0,3);
-                  display.setCursor(6,40);
-                  display.print(output2,3);
-*/
-			}
+			}*/
 			if (stop_flag) // we're supposed to be stationary
 			{
-				Serial.print("STATIONARY");
-				Serial.println(output);
+				
 				//double output1 = compensate_slack(-output, 1); //M1
 				//double output2 = compensate_slack(output, 0); //M2
 				md.setM1Speed(-output);
 				md.setM2Speed(-output);
 			}
-		
-		/*	else
+			else
 			{
-				Serial.println("y_val > 0.4");
-
-				int speed_dif = abs(Speed_L) - abs(Speed_R);
+				/*int speed_dif = abs(Speed_L) - abs(Speed_R);
 				//double output1 = compensate_slack(-output, 1); //M1
 				//double output2 = compensate_slack(output, 0); //M2
 				if (Speed_L > Speed_R)
@@ -268,19 +245,20 @@ void loop()
 					md.setM2Speed(-output + speed_dif);
 				}
 				else
-				{
+				{*/
 					md.setM1Speed(-output);
 					md.setM2Speed(-output);
-				}*/
+			//	}
 				// 25
 	/*			            display.setCursor(3,40);
                   display.print(output1,3);
                   display.setCursor(6,40);
                   display.print(output2,3);
 */
-		
-      display.setCursor(0,40);
-      display.setTextSize(2,1);
+			}
+		}
+	display.setCursor(0,40);
+     display.setTextSize(2,1);
      display.print(setPoint,3);
 
       display.setCursor(4,40);
@@ -288,9 +266,8 @@ void loop()
 
       //display.print(y_val,3);
       //
-	  Speed_L = 0;
-	  Speed_R = 0;
-
+	Speed_L = 0;
+	Speed_R = 0;
 }
 
 /*CREDIT ManpreetSingh80 on Github
