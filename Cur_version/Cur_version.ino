@@ -68,7 +68,7 @@ double output, pitch, setPoint, send_pitch;
 // NEWEST BESTEST W/ R?C
 // 8-11 possible kp w/o slack
 // ?-? possible kpw/ slack
-float kP = 6.4;
+float kP = 7.0;
 float kI = 0;
 float kD = 0.10;
 float kPwheel = 2.5;
@@ -102,7 +102,7 @@ bool stop_flag = false;
 */
 /**************************************************************************/
 
-#define center -1200
+#define center -500
 #define delta 3000
 
 void setup()
@@ -115,6 +115,12 @@ void setup()
 	pinMode(3, INPUT); // Set our input pins as such
 	pinMode(5, INPUT);
 	pinMode(0, INPUT);
+
+	pinMode(A5, OUTPUT);
+	digitalWrite(A5, HIGH);
+
+	attachInterrupt(Speed_L, Encoder_L,CHANGE);
+ 	attachInterrupt(Speed_R, Encoder_R,CHANGE);
 
 
 	// OLED setup
@@ -137,7 +143,7 @@ void setup()
 	bno.setExtCrystalUse(true);
 
 	// our setpoint for the pid loop
-	setPoint = -1.0 ; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
+	setPoint = 0.0 ; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
 
 	// Arduino PID Library setups
 	pid.SetMode(AUTOMATIC);
@@ -162,7 +168,7 @@ void loop()
 	}
 	
 	//Serial.println(right_stick);
-	left_stick = map(left_stick, 950, 2050, center - delta, center + delta + 500);
+	left_stick = map(left_stick, 950, 2050, center - delta, center + delta);
 	setPoint = left_stick;
 	y_val = (map(right_stick, 950,2050,-15000.0, 15000));
 	setPoint = setPoint / 1000.0;
@@ -178,10 +184,10 @@ void loop()
 
     //Serial.println(ch1);
 	potVal = analogRead(potPin);
-//	kP = map(potVal, 0, 1023, -20000, 10000);
+//	kP = map(potVal, 0, 1023, 0, 10000);
 //	kP = kP / 1000.0;
-//	kD = map(potVal, 0, 1023, -1000, 1000);
-//	kD = kD / 1000.0;
+	kD = map(potVal, 0, 1023, -1000, 1000);
+	kD = kD / 1000.0;
 //	setPoint = map(potVal, 0, 1023, -3000, 3000);
 //	setPoint = setPoint / 1000.0; 
 	imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
@@ -276,6 +282,10 @@ void loop()
       display.setCursor(0,40);
       display.setTextSize(2,1);
      display.print(setPoint,3);
+
+      display.setCursor(4,40);
+      display.print(kD,3);
+
       //display.print(y_val,3);
       //
 	  Speed_L = 0;
