@@ -68,9 +68,9 @@ double output, pitch, setPoint, send_pitch;
 // NEWEST BESTEST W/ R?C
 // 8-11 possible kp w/o slack
 // ?-? possible kpw/ slack
-float kP = 6.9;
-float kI = 0;
-float kD = 0.11;
+float kP = 7.0; //6.9;
+float kI = 0.0;
+float kD = 0.09;//0.11;
 float kPwheel = 3.0;
 float kDwheel = 0;
 // ----------------
@@ -102,7 +102,7 @@ bool stop_flag = false;
 */
 /**************************************************************************/
 
-#define center -1270
+#define center -2000
 #define delta 3500
 
 void setup()
@@ -126,7 +126,6 @@ void setup()
 	// OLED setup
     display.init();
     display.clear();                 // clear screen
-
 	md.init();	// dualvnh lib for motor controller
 
 	Serial.println("Orientation Sensor Raw Data Test");
@@ -143,7 +142,7 @@ void setup()
 	bno.setExtCrystalUse(true);
 
 	// our setpoint for the pid loop
-	setPoint = 0.0 ; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
+	setPoint = -2.0 ; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
 
 	// Arduino PID Library setups
 	pid.SetMode(AUTOMATIC);
@@ -159,31 +158,32 @@ void setup()
 void loop()
 {
 	//950 -> 2050
-	left_stick = pulseIn(5, HIGH, 25000); // each channel
-	right_stick = pulseIn(3, HIGH, 25000); // Read the pulse width of 
+	left_stick = pulseIn(5, HIGH); // each channel
+	right_stick = pulseIn(3, HIGH); // Read the pulse width of 
 	stop_flag = true;
 	if (pulseIn(0, HIGH, 25000) < 1500)
 	{
 		stop_flag = false;
 	}
-	int error = 20;
+	/*int error = 20;
 	if(left_stick < left_stick + error && left_stick > left_stick - error)
 	{
 		left_stick = 1500;
-	}
+	}*/
 	left_stick = map(left_stick, 950, 2050, center - delta, center + delta);
 	setPoint = left_stick;
 	y_val = (map(right_stick, 950,2050,-15000.0, 15000));
 	setPoint = setPoint / 1000.0;
 	y_val = y_val / 1000.0;
 
-	pid.SetTunings(kP, kI, kD);
 	
 	potVal = analogRead(potPin);
 //	kP = map(potVal, 0, 1023, 0, 10000);
 //	kP = kP / 1000.0;
 //	kD = map(potVal, 0, 1023, 0, 1000);
 //	kD = kD / 1000.0;
+		pid.SetTunings(kP, kI, kD);
+
 //	setPoint = map(potVal, 0, 1023, -3000, 3000);
 //	setPoint = setPoint / 1000.0; 
 	imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
@@ -263,7 +263,8 @@ void loop()
 
       display.setCursor(4,40);
       display.print(kD,3);
-
+ display.setCursor(6,40);
+      display.print(pitch,3);
       //display.print(y_val,3);
       //
 	Speed_L = 0;
