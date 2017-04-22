@@ -72,12 +72,13 @@ double output, pitch, setPoint, send_pitch;
 float kP = 6.3;
 float kI = 0;
 float kD = 0.10;
-float kPwheel = 1.0;
+float kPwheel = 0.0;
 float kDwheel = 0.00;
 // ----------------
 // -----------------------------------------
 
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
+
 
 int potPin = 0;
 long potVal = 0.0;

@@ -68,9 +68,21 @@ double output, pitch, setPoint, send_pitch;
 // NEWEST BESTEST W/ R?C
 // 8-11 possible kp w/o slack
 // ?-? possible kpw/ slack
-float kP = 7.0; //6.9;
-float kI = 0.0;
-float kD = 0.09;//0.11;
+// OLD BEST :
+ // kP = 6.35
+ // kI = 0
+ // kD = 0.07
+// CURRENT: 
+/*
+kp = 6.3
+kI = 0.0
+kD 0.07
+
+*/
+ 
+float kP = 3.3;//6.3; //6.9;
+float kI = 0.0;//0.02;//0.02;
+float kD = 0.07;//0.10;//0.11;
 float kPwheel = 3.0;
 float kDwheel = 0;
 // ----------------
@@ -79,14 +91,14 @@ float kDwheel = 0;
 PID pid(&pitch, &output, &setPoint, kP, kI, kD, AUTOMATIC);
 
 
-int potPin = 0;
+int potPin = A0;
 long potVal = 0.0;
 // was 65/60
 //float MOTORSLACK_1 = 26.5;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
 //float MOTORSLACK_2 = 25;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
 
 float MOTORSLACK_M1 = 5;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
-float MOTORSLACK_M2 = 7;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
+float MOTORSLACK_M2 = 8;	// Compensate for motor slack range (low PWM values which result in no motor engagement)
 
 
 // timer setup: we're running on a 10 ms loop
@@ -102,8 +114,8 @@ bool stop_flag = false;
 */
 /**************************************************************************/
 
-#define center -2000
-#define delta 3500
+#define center -1325
+#define delta 4000
 
 void setup()
 {
@@ -116,11 +128,20 @@ void setup()
 	pinMode(5, INPUT);
 	pinMode(0, INPUT);
 
-	pinMode(A5, OUTPUT);
+	pinMode(A1, INPUT);
+	pinMode(A2, INPUT);
+	pinMode(A3, INPUT);
+	pinMode(A4, INPUT);
+	digitalWrite(A1, HIGH);
+	digitalWrite(A2, HIGH);
+	digitalWrite(A3, HIGH);
+	digitalWrite(A4, HIGH);
+
+	pinMode(A5, OUTPUT);	
 	digitalWrite(A5, HIGH);
 
-	attachInterrupt(Speed_L, Encoder_L, CHANGE);
- 	attachInterrupt(Speed_R, Encoder_R, CHANGE);
+	attachInterrupt(SPD_PUL_L, Encoder_L, CHANGE);
+ 	attachInterrupt(SPD_PUL_R, Encoder_R, CHANGE);
 
 
 	// OLED setup
@@ -142,7 +163,7 @@ void setup()
 	bno.setExtCrystalUse(true);
 
 	// our setpoint for the pid loop
-	setPoint = -2.0 ; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
+	setPoint = .10 ; //BETTER @ 3.5? 3.2 is 0, 2.9 used to be 0
 
 	// Arduino PID Library setups
 	pid.SetMode(AUTOMATIC);
@@ -165,12 +186,14 @@ void loop()
 	{
 		stop_flag = false;
 	}
-	/*int error = 20;
-	if(left_stick < left_stick + error && left_stick > left_stick - error)
-	{
-		left_stick = 1500;
-	}*/
+
 	left_stick = map(left_stick, 950, 2050, center - delta, center + delta);
+	int error = 50;
+	if(left_stick < (center + error) && left_stick > (center - error))
+	{
+		left_stick = center;
+	}
+	
 	setPoint = left_stick;
 	y_val = (map(right_stick, 950,2050,-15000.0, 15000));
 	setPoint = setPoint / 1000.0;
@@ -182,7 +205,9 @@ void loop()
 //	kP = kP / 1000.0;
 //	kD = map(potVal, 0, 1023, 0, 1000);
 //	kD = kD / 1000.0;
-		pid.SetTunings(kP, kI, kD);
+//	kI = map(potVal, 0, 1023, 0, 100);
+//	kI = kI / 1000.0;
+//	pid.SetTunings(kP, kI, kD);
 
 //	setPoint = map(potVal, 0, 1023, -3000, 3000);
 //	setPoint = setPoint / 1000.0; 
@@ -203,34 +228,46 @@ void loop()
 		{
 			pid.Compute(); // use pid loop to calculate output
 			// if we're supposed to be moving, factor in the wheel constants
+			double output1 = compensate_slack(-output, 1); //M1
+			double output2 = compensate_slack(-output, 0); //M2
 			if (!stop_flag)
 			{
-				output = output + (kPwheel * Speed_L) + (kDwheel * (Speed_L - last_count));
+				//Serial.println("HI");
+				output = output + (kPwheel * Speed_R) + (kDwheel * abs(Speed_R - last_count));
+				 md.setM1Speed(output1);
+				 md.setM2Speed(output2);
+				 display.setCursor(4,40);
+ 		         display.print(Speed_R );
+ 		         Serial.println(Speed_R);
+						
 			}
-			last_count = Speed_L;
+			last_count = Speed_R;
 		//	Serial.println(y_val);
-/*			if (y_val > 0.4)
-			{
-				//double output1 = compensate_slack((-output - y_val), 1); //M1
-				md.setM1Speed(-output); //26.5
-				md.setM2Speed(-output - 25); // 25
-			}
-			else if (y_val < -0.8)
-			{
-				//double output2 = compensate_slack( (output - y_val), 0); //M2
-				md.setM1Speed(-output - 25); //26.5
-				md.setM2Speed(-output); // 25
-			}*/
 			if (stop_flag) // we're supposed to be stationary
 			{
-				
-				//double output1 = compensate_slack(-output, 1); //M1
-				//double output2 = compensate_slack(output, 0); //M2
-				md.setM1Speed(-output);
-				md.setM2Speed(-output);
+				md.setM1Speed(output1);
+				md.setM2Speed(output2);
 			}
-			else
+			if (y_val > 1.0) //overwrite stationary with a turn
 			{
+				Serial.println(">1");
+				//double output1 = compensate_slack((-output - y_val), 1); //M1
+				md.setM1Speed(output1-25); //26.5
+				md.setM2Speed(output2 + 25); // 25
+			}
+			else if (y_val < -1.0)
+			{
+								Serial.println("<-1");
+								Serial.println("<-1");
+
+				//double output2 = compensate_slack( (output - y_val), 0); //M2
+				md.setM1Speed(output1 + 25); //26.5
+				md.setM2Speed(output2 - 25); // 25
+			}
+			Serial.println(y_val);
+			
+		//	else
+		//	{
 				/*int speed_dif = abs(Speed_L) - abs(Speed_R);
 				//double output1 = compensate_slack(-output, 1); //M1
 				//double output2 = compensate_slack(output, 0); //M2
@@ -246,8 +283,8 @@ void loop()
 				}
 				else
 				{*/
-					md.setM1Speed(-output);
-					md.setM2Speed(-output);
+	//				md.setM1Speed(output1);
+	//				md.setM2Speed(output2);
 			//	}
 				// 25
 	/*			            display.setCursor(3,40);
@@ -255,16 +292,19 @@ void loop()
                   display.setCursor(6,40);
                   display.print(output2,3);
 */
-			}
+			//}
 		}
 	display.setCursor(0,40);
      display.setTextSize(2,1);
      display.print(setPoint,3);
-
+/*
       display.setCursor(4,40);
-      display.print(kD,3);
+      display.print(kP,3);
+      */
  display.setCursor(6,40);
       display.print(pitch,3);
+     //   Serial.println(Speed_L);
+
       //display.print(y_val,3);
       //
 	Speed_L = 0;
@@ -314,10 +354,11 @@ long mapfloat(long x, long in_min, long in_max, long out_min, long out_max)
 
 void Encoder_L()   //car up is positive car down  is negative
 {
-  if (digitalRead(SPD_PUL_L))
-    Speed_L += 1;
+  if (digitalRead(SPD_PUL_L) == digitalRead(SPD_INT_L))
+    Speed_L++;
   else
-    Speed_L -= 1;
+    Speed_L--;
+ // Serial.println(Speed_L);
  //  Serial.print("SPEED_L:    ");
    // Serial.println(Speed_L);
 }
@@ -325,10 +366,10 @@ void Encoder_L()   //car up is positive car down  is negative
 
 void Encoder_R()    //car up is positive car down  is negative
 {
-  if (!digitalRead(SPD_PUL_R))
-    Speed_R += 1;
+  if (digitalRead(SPD_PUL_R) == digitalRead(SPD_INT_R))
+    Speed_R++;
   else
-    Speed_R -= 1;
+    Speed_R--;
     
   // Serial.print("SPEED_R:    ");
    // Serial.println(Speed_R);
