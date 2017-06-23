@@ -83,8 +83,8 @@ kD 0.07
 float kP = 3.3;//6.3; //6.9;
 float kI = 0.0;//0.02;//0.02;
 float kD = 0.07;//0.10;//0.11;
-float kPwheel = 3.0;
-float kDwheel = 0;
+float kPwheel = 1.5;
+float kDwheel = 0;//0.05;
 // ----------------
 // -----------------------------------------
 
@@ -188,7 +188,7 @@ void loop()
 	}
 
 	left_stick = map(left_stick, 950, 2050, center - delta, center + delta);
-	int error = 50;
+	int error = 65;
 	if(left_stick < (center + error) && left_stick > (center - error))
 	{
 		left_stick = center;
@@ -233,12 +233,14 @@ void loop()
 			if (!stop_flag)
 			{
 				//Serial.println("HI");
-				output = output + (kPwheel * Speed_R) + (kDwheel * abs(Speed_R - last_count));
+				float speed_avg = (Speed_R + Speed_L) / 2;
+				output1 = output1 + (kPwheel * Speed_R) + (kDwheel * abs(Speed_R - last_count));
+				output2 = output2 + (kPwheel * Speed_R) + (kDwheel * abs(Speed_R - last_count));
+
 				 md.setM1Speed(output1);
 				 md.setM2Speed(output2);
-				 display.setCursor(4,40);
- 		         display.print(Speed_R );
- 		         Serial.println(Speed_R);
+				 //display.setCursor(4,40);
+ 		         //display.print(Speed_R );
 						
 			}
 			last_count = Speed_R;
@@ -250,21 +252,16 @@ void loop()
 			}
 			if (y_val > 1.0) //overwrite stationary with a turn
 			{
-				Serial.println(">1");
 				//double output1 = compensate_slack((-output - y_val), 1); //M1
-				md.setM1Speed(output1-25); //26.5
-				md.setM2Speed(output2 + 25); // 25
-			}
-			else if (y_val < -1.0)
-			{
-								Serial.println("<-1");
-								Serial.println("<-1");
-
-				//double output2 = compensate_slack( (output - y_val), 0); //M2
 				md.setM1Speed(output1 + 25); //26.5
 				md.setM2Speed(output2 - 25); // 25
 			}
-			Serial.println(y_val);
+			else if (y_val < -1.0)
+			{
+				//double output2 = compensate_slack( (output - y_val), 0); //M2
+				md.setM1Speed(output1 - 25); //26.5
+				md.setM2Speed(output2 + 25); // 25
+			}
 			
 		//	else
 		//	{
